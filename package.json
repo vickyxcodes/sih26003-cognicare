@@ -1,0 +1,40 @@
+{
+  "name": "sih26003-cognicare",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CogniCare - offline-first cognitive care PWA for elderly dementia patients (SIH26003 prototype)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/postbuild.mjs",
+    "preview": "vite preview --host",
+    "test": "node --test",
+    "check": "node scripts/check-static.mjs",
+    "verify": "npm run check && npm test",
+    "demo:plan": "node scripts/demo-plan.mjs",
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "preview:pictures": "node scripts/preview-pictures.mjs",
+    "predeploy": "npm run verify && npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "chart.js": "4.4.4",
+    "firebase": "10.14.1",
+    "idb": "8.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.1",
+    "autoprefixer": "10.4.20",
+    "gh-pages": "6.1.1",
+    "postcss": "8.4.47",
+    "tailwindcss": "3.4.13",
+    "vite": "5.4.8",
+    "vite-plugin-pwa": "0.20.5"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

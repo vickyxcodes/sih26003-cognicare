@@ -1,0 +1,36 @@
+/*
+ * Firestore security rules for CogniCare.
+ *
+ * Paste this into Firebase console -> Firestore Database -> Rules -> Publish.
+ * Then open the Rules Playground and confirm:
+ *   - unauthenticated get on sessions/abc  -> DENIED
+ *   - authenticated   get on sessions/abc  -> ALLOWED
+ *
+ * Records are append-only on purpose: a device may create session and reminder
+ * records and read them back for the caregiver view, but nothing can rewrite or
+ * erase history, so a synced log cannot be silently altered.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /patients/{docId} {
+      allow read, create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    match /sessions/{docId} {
+      allow create: if request.auth != null
+                    && request.resource.data.pairingCode is string;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    match /reminderEvents/{docId} {
+      allow create: if request.auth != null
+                    && request.resource.data.pairingCode is string;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+  }
+}

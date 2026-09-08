@@ -1,0 +1,109 @@
+/**
+ * timeWords - timestamps written the way a caregiver reads them.
+ *
+ * The caregiver screens must never show a bare epoch number, and they must never
+ * round a time into something friendlier than the truth ("just now" for a read
+ * that happened an hour ago). So everything here is a plain formatter over a
+ * real timestamp, with `now` and the time zone injected: the same call in a test
+ * and in a browser produces the same words.
+ *
+ * Dependency-free on purpose - `node --test` exercises every branch below.
+ */
+
+export const DAY_MS = 86400000;
+
+/** en-CA formats a date as 2026-09-06, which is sortable and comparable. */
+const ISO_LOCALE = 'en-CA';
+
+export const DEFAULT_LOCALE = 'en-IN';
+
+/**
+ * ICU versions disagree about the space before "am": some use U+202F, some a
+ * normal space, some upper-case the marker. None of that is worth a failing
+ * test, so every formatted string comes back through here.
+ */
+const tidy = (text) => String(text).replace(/\u202f|\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+
+const fmt = (locale, options) => new Intl.DateTimeFormat(locale, options);
+
+export function isStamp(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
+/** The calendar day a timestamp falls on, in the reader's time zone. */
+export function dayKey(timestamp, { timeZone } = {}) {
+  if (!isStamp(timestamp)) return null;
+  return fmt(ISO_LOCALE, { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(new Date(timestamp));
+}
+
+/** Whole calendar days from `timestamp` to `now`: 0 today, 1 yesterday. */
+export function dayDistance(timestamp, now, options = {}) {
+  const from = dayKey(timestamp, options);
+  const to = dayKey(now, options);
+  if (!from || !to) return null;
+  const utc = (key) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / DAY_MS);
+}
+
+export function formatClock(timestamp, { locale = DEFAULT_LOCALE, timeZone } = {}) {
+  if (!isStamp(timestamp)) return '';
+  return tidy(fmt(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(timestamp)))
+    .toLowerCase();
+}
+
+/** "6 Sep" - short enough for a chart axis. */
+export function formatDay(timestamp, { locale = DEFAULT_LOCALE, timeZone } = {}) {
+  if (!isStamp(timestamp)) return '';
+  return tidy(fmt(locale, { timeZone, day: 'numeric', month: 'short' }).format(new Date(timestamp)));
+}
+
+export function formatWeekday(timestamp, { locale = DEFAULT_LOCALE, timeZone } = {}) {
+  if (!isStamp(timestamp)) return '';
+  return tidy(fmt(locale, { timeZone, weekday: 'short' }).format(new Date(timestamp)));
+}
+
+function formatYear(timestamp, { locale = DEFAULT_LOCALE, timeZone } = {}) {
+  return tidy(fmt(locale, { timeZone, year: 'numeric' }).format(new Date(timestamp)));
+}
+
+/**
+ * "Today at 9:15 am", "Yesterday at 8:02 pm", "Sat 6 Sep at 9:15 am", and once a
+ * date is old enough to be ambiguous, the year as well. Returns '' for a missing
+ * timestamp so a caller can never accidentally print "Invalid Date".
+ */
+export function formatWhen(timestamp, now = Date.now(), options = {}) {
+  if (!isStamp(timestamp)) return '';
+  const clock = formatClock(timestamp, options);
+  const days = dayDistance(timestamp, now, options);
+  if (days === 0) return `Today at ${clock}`;
+  if (days === 1) return `Yesterday at ${clock}`;
+  const day = formatDay(timestamp, options);
+  if (days !== null && days > 1 && days < 7) {
+    return `${formatWeekday(timestamp, options)} ${day} at ${clock}`;
+  }
+  const year = formatYear(timestamp, options) === formatYear(now, options)
+    ? ''
+    : ` ${formatYear(timestamp, options)}`;
+  return `${day}${year} at ${clock}`;
+}
+
+export const AGE = { recent: 'recent', quiet: 'quiet', stale: 'stale', unknown: 'unknown' };
+
+/**
+ * How old the newest thing on the screen is, in words - the input to every
+ * "this may be out of date" line on the dashboard.
+ */
+export function describeAge(timestamp, now = Date.now(), options = {}) {
+  if (!isStamp(timestamp)) return { level: AGE.unknown, days: null, words: 'no dated records yet' };
+  const days = dayDistance(timestamp, now, options);
+  if (days === null) return { level: AGE.unknown, days: null, words: 'no dated records yet' };
+  if (days <= 0) return { level: AGE.recent, days: 0, words: 'from today' };
+  if (days === 1) return { level: AGE.recent, days, words: 'from yesterday' };
+  if (days < 7) return { level: AGE.quiet, days, words: `${days} days old` };
+  if (days < 14) return { level: AGE.stale, days, words: 'more than a week old' };
+  return { level: AGE.stale, days, words: `${Math.floor(days / 7)} weeks old` };
+}

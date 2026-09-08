@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Design system rule: everything is sized in rem off a 20px root, so the
+       whole UI (text, padding, tap targets) is one step larger than default. */
+    font-size: 20px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink antialiased;
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* No swipe / pinch / multi-touch interactions anywhere in this app:
+     taps only, and no 300ms double-tap-zoom delay on controls. */
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  :focus-visible {
+    outline: 4px solid #0f766e;
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Every tappable control in patient mode is built from one of these. */
+  .tap-target {
+    @apply min-h-tap min-w-tap flex items-center justify-center rounded-xl2 font-semibold;
+    @apply transition-transform duration-100 active:translate-y-[3px] active:shadow-none;
+  }
+
+  .btn-primary {
+    @apply tap-target bg-primary text-white shadow-tap px-8 text-2xl;
+  }
+
+  .btn-secondary {
+    @apply tap-target bg-white text-ink border-4 border-primary px-8 text-xl;
+  }
+
+  .btn-quiet {
+    @apply tap-target bg-white text-ink-soft border-2 border-ink-soft/30 px-6 text-lg;
+  }
+
+  .card {
+    @apply bg-card rounded-xl2 shadow-card p-6;
+  }
+
+  .screen {
+    @apply mx-auto w-full max-w-3xl px-5 py-6;
+  }
+}
