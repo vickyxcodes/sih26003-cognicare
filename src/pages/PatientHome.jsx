@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HeartMark, PlayIcon } from '../components/icons.jsx';
+import { getStore } from '../lib/db.js';
+import { ensureIdentity } from '../lib/sync.js';
 import { cancelSpeech, primeSpeech, speak } from '../lib/voice.js';
 
 /**
  * Patient Home.
  *
- * Deliberately almost empty: one enormous Play button is the only real control.
+ * Deliberately simple: the patient has a large memory-game button and a clear
+ * everyday-routines option, with no settings or multi-step menu to navigate.
  * The greeting is spoken aloud on arrival so a patient who cannot read the screen
  * still knows what to do; on iOS that first line may wait for the Play tap, since
  * Safari only lets speech begin inside a gesture. That same tap primes the speech
@@ -14,11 +17,25 @@ import { cancelSpeech, primeSpeech, speak } from '../lib/voice.js';
  */
 export default function PatientHome() {
   const navigate = useNavigate();
+  const store = useMemo(() => getStore(), []);
+  const [pairingCode, setPairingCode] = useState(null);
 
   useEffect(() => {
     speak('Welcome to CogniCare. When you are ready, tap the big button to play.');
     return () => cancelSpeech();
   }, []);
+
+  useEffect(() => {
+    let live = true;
+    ensureIdentity(store)
+      .then(({ pairingCode: code }) => {
+        if (live) setPairingCode(code);
+      })
+      .catch((error) => console.warn('[CogniCare] could not prepare the caregiver code', error));
+    return () => {
+      live = false;
+    };
+  }, [store]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between px-6 py-10">
@@ -40,12 +57,22 @@ export default function PatientHome() {
         <span className="text-5xl font-bold tracking-wide">Play</span>
       </button>
 
+      <Link to="/play/routine" className="btn-secondary w-full max-w-xl text-center text-2xl">
+        Everyday routines
+      </Link>
+
       <Link
         to="/caregiver"
         className="min-h-tap flex items-center px-4 text-base text-ink-soft/70 underline decoration-ink-soft/30"
       >
         For caregivers
       </Link>
+
+      {pairingCode ? (
+        <p className="text-center text-base text-ink-soft">
+          Caregiver code: <span className="font-bold tracking-widest text-ink">{pairingCode}</span>
+        </p>
+      ) : null}
     </main>
   );
 }

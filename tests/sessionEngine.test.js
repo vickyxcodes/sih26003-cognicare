@@ -410,7 +410,9 @@ test('the play screen rotates the two domains and takes its wording from the ban
   const play = readFileSync(join(here, '..', 'src', 'pages', 'Play.jsx'), 'utf8');
 
   assert.match(play, /import \{ FIRST_BANK, nextBank \} from '\.\.\/data\/banks\.js'/);
+  assert.match(play, /import \{ BANKS \} from '\.\.\/data\/banks\.js'/);
   assert.match(play, /startSession\(\{ bank: FIRST_BANK \}\)/, 'a visit opens on domain 1');
+  assert.match(play, /play\/routine/, 'the second game has a direct route');
   assert.match(play, /nextBank\(bank\)/, '"Play again" moves to the other domain');
   assert.match(play, /bank\.unitLabel/, 'the counter is worded by the bank');
   assert.match(play, /bank\.doneLine\(/, 'so is the closing count');

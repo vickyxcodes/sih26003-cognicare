@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { getStore, isStorageEphemeral } from '../lib/db.js';
 import { normaliseCode, readStoredCode, saveCode, validateCode } from '../lib/caregiverData.js';
-import { SETTINGS } from '../lib/sync.js';
+import { ensureIdentity, SETTINGS } from '../lib/sync.js';
 import { PAIRING_CODE_LENGTH } from '../lib/privacy.js';
 import { HeartMark } from '../components/icons.jsx';
 
@@ -32,7 +32,8 @@ export default function CaregiverPairing() {
 
   useEffect(() => {
     let live = true;
-    Promise.all([readStoredCode(store), store.getSetting(SETTINGS.pairingCode, null)])
+    ensureIdentity(store)
+      .then(() => Promise.all([readStoredCode(store), store.getSetting(SETTINGS.pairingCode, null)]))
       .then(([code, own]) => {
         if (!live) return;
         setStored(code);

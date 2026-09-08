@@ -35,6 +35,7 @@ export default function App() {
       <Route element={<PatientLayout />}>
         <Route path="/" element={<PatientHome />} />
         <Route path="/play" element={<Play />} />
+        <Route path="/play/routine" element={<Play />} />
       </Route>
       <Route path="/caregiver" element={<CaregiverPairing />} />
       <Route path="/caregiver/dashboard" element={<CaregiverDashboard />} />

@@ -33,7 +33,7 @@ const NODE_BUILTINS = new Set([
   'os', 'path', 'process', 'stream', 'test', 'url', 'util', 'zlib',
 ]);
 
-const ROUTES = new Set(['/', '/play', '/caregiver', '/caregiver/dashboard']);
+const ROUTES = new Set(['/', '/play', '/play/routine', '/caregiver', '/caregiver/dashboard']);
 
 const errors = [];
 const warnings = [];

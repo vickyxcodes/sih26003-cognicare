@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import HomeButton from '../components/HomeButton.jsx';
 import Picture from '../components/Picture.jsx';
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, RetryIcon } from '../components/icons.jsx';
 import { FIRST_BANK, nextBank } from '../data/banks.js';
+import { BANKS } from '../data/banks.js';
 import { recordAnswer, recordSession } from '../lib/db.js';
 import { cancelSpeech, speak } from '../lib/voice.js';
 import {
@@ -38,8 +40,14 @@ import {
  * off, or on a browser with no speech, the game is unchanged.
  */
 export default function Play() {
-  const [bank, setBank] = useState(FIRST_BANK);
-  const [session, setSession] = useState(() => startSession({ bank: FIRST_BANK }));
+  const location = useLocation();
+  const requestedBank = location.pathname.endsWith('/play/routine') ? BANKS[1] : FIRST_BANK;
+  const [bank, setBank] = useState(requestedBank);
+  const [session, setSession] = useState(() => (
+    requestedBank === BANKS[1]
+      ? startSession({ bank: requestedBank })
+      : startSession({ bank: FIRST_BANK })
+  ));
   const savedSessionAt = useRef(null);
   /**
    * A reminder can cover this screen at any moment (the overlay lives in the
