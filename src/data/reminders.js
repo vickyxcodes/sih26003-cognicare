@@ -22,7 +22,7 @@ export const REMINDER_SCHEDULE = [
   { id: "hydration-late-morning", type: "hydration", at: "11:00" },
   { id: "medicine-afternoon", type: "medicine", at: "14:00" },
   { id: "hydration-afternoon", type: "hydration", at: "16:00" },
-  { id: "hydration-evening", type: "hydration", at: "18:10" },
+  { id: "hydration-evening", type: "hydration", at: "19:00" },
   { id: "medicine-night", type: "medicine", at: "20:00" },
 ];
 
