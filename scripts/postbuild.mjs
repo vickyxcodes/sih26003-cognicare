@@ -28,7 +28,10 @@ const swFile = ['sw.js', 'service-worker.js'].map((f) => join(DIST, f)).find(exi
 if (!swFile) fail('no service worker in dist/ - is vite-plugin-pwa still configured?');
 
 const sw = readFileSync(swFile, 'utf8');
-const precached = [...sw.matchAll(/"url"\s*:\s*"([^"]+)"/g)].map((m) => m[1]);
+const precacheManifest = sw.match(/\.precacheAndRoute\(\s*\[([\s\S]*?)\]\s*,/);
+const precached = [
+  ...(precacheManifest?.[1].matchAll(/["']?url["']?\s*:\s*(["'])(.*?)\1/g) || []),
+].map((m) => m[2]);
 if (precached.length < 4) fail(`service worker precaches only ${precached.length} files`);
 
 const needs = [
