@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="CogniCare">
+  <rect width="100" height="100" rx="22" fill="#0f766e"/>
+  <g fill="#ffffff" transform="translate(50 52) scale(0.72) translate(-50 -56)">
+    <polygon points="50,92 14,56 50,20 86,56"/>
+    <circle cx="32" cy="38" r="25.5"/>
+    <circle cx="68" cy="38" r="25.5"/>
+  </g>
+</svg>
