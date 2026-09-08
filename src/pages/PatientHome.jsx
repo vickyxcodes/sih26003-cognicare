@@ -38,11 +38,22 @@ export default function PatientHome() {
   }, [store]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between px-6 py-10">
-      <div className="flex flex-col items-center gap-4 pt-6">
-        <HeartMark className="h-20 w-20" />
-        <p className="text-2xl font-semibold text-ink-soft">CogniCare</p>
-      </div>
+    <main className="home-screen">
+      <header className="home-brand">
+        <div className="home-mark">
+          <HeartMark className="h-12 w-12" />
+        </div>
+        <div>
+          <p className="home-title">CogniCare</p>
+          <p className="home-subtitle">Small moments of memory, every day</p>
+        </div>
+      </header>
+
+      <section className="home-intro" aria-labelledby="home-heading">
+        <p className="home-eyebrow">Ready when you are</p>
+        <h1 id="home-heading">Let’s play together</h1>
+        <p>Choose a gentle activity below. There is no timer to rush you.</p>
+      </section>
 
       <button
         type="button"
@@ -50,29 +61,30 @@ export default function PatientHome() {
           primeSpeech();
           navigate('/play');
         }}
-        className="tap-target w-full max-w-xl min-h-tap-xl flex-col gap-4 bg-primary px-10 py-10 text-white shadow-tap animate-soft-pulse"
+        className="home-primary tap-target min-h-tap-xl w-full flex-col gap-3 px-8 py-8 text-white shadow-tap animate-soft-pulse"
         aria-label="Play today's game"
       >
-        <PlayIcon className="h-24 w-24" />
-        <span className="text-5xl font-bold tracking-wide">Play</span>
+        <span className="home-action-icon"><PlayIcon className="h-14 w-14" /></span>
+        <span className="text-4xl font-bold tracking-wide">Memory game</span>
+        <span className="text-lg font-medium text-white/80">Remember the picture</span>
       </button>
 
-      <Link to="/play/routine" className="btn-secondary w-full max-w-xl text-center text-2xl">
-        Everyday routines
+      <Link to="/play/routine" className="home-secondary tap-target w-full min-h-tap-lg flex-col gap-1 px-6 text-center">
+        <span className="text-2xl font-bold">Everyday routines</span>
+        <span className="text-base font-medium text-ink-soft/75">Match an object to a moment</span>
       </Link>
 
-      <Link
-        to="/caregiver"
-        className="min-h-tap flex items-center px-4 text-base text-ink-soft/70 underline decoration-ink-soft/30"
-      >
-        For caregivers
-      </Link>
+      <footer className="home-footer">
+        <Link to="/caregiver" className="home-caregiver-link min-h-tap">
+          For caregivers <span aria-hidden="true">→</span>
+        </Link>
 
-      {pairingCode ? (
-        <p className="text-center text-base text-ink-soft">
-          Caregiver code: <span className="font-bold tracking-widest text-ink">{pairingCode}</span>
-        </p>
-      ) : null}
+        {pairingCode ? (
+          <p className="home-code">
+            Caregiver code <span>{pairingCode}</span>
+          </p>
+        ) : <p className="home-code home-code-loading">Preparing caregiver code…</p>}
+      </footer>
     </main>
   );
 }

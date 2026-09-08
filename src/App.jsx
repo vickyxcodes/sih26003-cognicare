@@ -22,7 +22,7 @@ import ReminderOverlay from './components/ReminderOverlay.jsx';
 function PatientLayout() {
   const [reminderOnScreen, setReminderOnScreen] = useState(false);
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-shell min-h-screen">
       <Outlet context={{ reminderOnScreen }} />
       <ReminderOverlay onShowing={setReminderOnScreen} />
     </div>

@@ -17,13 +17,13 @@
  * and the test that enforces the gap.
  */
 export const REMINDER_SCHEDULE = [
-  { id: 'medicine-morning', type: 'medicine', at: '08:00' },
-  { id: 'appointment-weekly', type: 'appointment', at: '10:00', days: [2] },
-  { id: 'hydration-late-morning', type: 'hydration', at: '11:00' },
-  { id: 'medicine-afternoon', type: 'medicine', at: '14:00' },
-  { id: 'hydration-afternoon', type: 'hydration', at: '16:00' },
-  { id: 'hydration-evening', type: 'hydration', at: '19:00' },
-  { id: 'medicine-night', type: 'medicine', at: '20:00' },
+  { id: "medicine-morning", type: "medicine", at: "08:00" },
+  { id: "appointment-weekly", type: "appointment", at: "10:00", days: [2] },
+  { id: "hydration-late-morning", type: "hydration", at: "11:00" },
+  { id: "medicine-afternoon", type: "medicine", at: "14:00" },
+  { id: "hydration-afternoon", type: "hydration", at: "16:00" },
+  { id: "hydration-evening", type: "hydration", at: "18:10" },
+  { id: "medicine-night", type: "medicine", at: "20:00" },
 ];
 
 /**
@@ -35,11 +35,14 @@ export const REMINDER_SCHEDULE = [
  * appointment reminder says an appointment, never what it is for.
  */
 export const REMINDER_WORDING = {
-  medicine: { pictureId: 'medicine', line: 'It is time to take your medicine.' },
-  hydration: { pictureId: 'glass', line: 'Please have a drink of water.' },
+  medicine: {
+    pictureId: "medicine",
+    line: "It is time to take your medicine.",
+  },
+  hydration: { pictureId: "glass", line: "Please have a drink of water." },
   appointment: {
-    pictureId: 'clock',
-    line: 'You have an appointment today. Someone will help you get ready.',
+    pictureId: "clock",
+    line: "You have an appointment today. Someone will help you get ready.",
   },
 };
 

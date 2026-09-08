@@ -11,8 +11,9 @@
   }
 
   body {
-    @apply bg-paper text-ink antialiased;
-    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    @apply text-ink antialiased;
+    background: #f8faf9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     margin: 0;
     min-height: 100vh;
     overscroll-behavior: none;
@@ -64,10 +65,129 @@
   }
 
   .card {
-    @apply bg-card rounded-xl2 shadow-card p-6;
+    @apply bg-card rounded-xl2 p-6;
+    border: 1px solid rgba(20, 32, 46, 0.08);
+    box-shadow: 0 12px 32px rgba(20, 32, 46, 0.08);
   }
 
   .screen {
-    @apply mx-auto w-full max-w-3xl px-5 py-6;
+    @apply mx-auto w-full max-w-3xl px-5 py-8;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 10% 0%, rgba(15, 118, 110, 0.10), transparent 28rem),
+      linear-gradient(180deg, #f8faf9 0%, #fbf9f4 55%, #f5f8f7 100%);
+  }
+
+  .home-screen {
+    @apply mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-8;
+    gap: 2rem;
+  }
+
+  .home-brand {
+    @apply flex items-center gap-4;
+  }
+
+  .home-mark {
+    @apply flex h-16 w-16 items-center justify-center rounded-2xl text-white;
+    background: linear-gradient(145deg, #15958a, #0f766e);
+    box-shadow: 0 10px 22px rgba(15, 118, 110, 0.20);
+  }
+
+  .home-title {
+    @apply text-3xl font-bold tracking-tight text-ink;
+  }
+
+  .home-subtitle {
+    @apply mt-1 text-base text-ink-soft;
+  }
+
+  .home-intro {
+    @apply mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center;
+  }
+
+  .home-eyebrow {
+    @apply mb-2 text-base font-bold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .home-intro h1 {
+    @apply text-5xl font-bold tracking-tight text-ink;
+  }
+
+  .home-intro > p:last-of-type {
+    @apply mt-3 max-w-xl text-xl leading-relaxed text-ink-soft;
+  }
+
+  .home-primary {
+    @apply mt-8;
+    background: linear-gradient(135deg, #15958a, #0f766e);
+    box-shadow: 0 10px 0 #0b5750, 0 18px 32px rgba(15, 118, 110, 0.18);
+  }
+
+  .home-primary:active {
+    box-shadow: 0 4px 0 #0b5750, 0 10px 22px rgba(15, 118, 110, 0.14);
+  }
+
+  .home-action-icon {
+    @apply flex h-20 w-20 items-center justify-center rounded-full bg-white/15;
+  }
+
+  .home-secondary {
+    @apply mt-5;
+    border: 2px solid rgba(15, 118, 110, 0.22);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 8px 24px rgba(20, 32, 46, 0.06);
+  }
+
+  .home-secondary:hover {
+    border-color: rgba(15, 118, 110, 0.48);
+    background: #ffffff;
+  }
+
+  .home-footer {
+    @apply flex flex-wrap items-center justify-between gap-4 border-t border-ink-soft/10 pt-5;
+  }
+
+  .home-caregiver-link {
+    @apply flex items-center gap-2 rounded-full px-4 text-base font-semibold text-ink-soft underline decoration-ink-soft/30 underline-offset-4;
+  }
+
+  .home-code {
+    @apply rounded-full bg-white/75 px-4 py-3 text-base text-ink-soft;
+    border: 1px solid rgba(20, 32, 46, 0.08);
+  }
+
+  .home-code span {
+    @apply ml-2 font-bold tracking-[0.2em] text-ink;
+  }
+
+  .home-code-loading {
+    @apply text-ink-soft/70;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-screen {
+    @apply px-5 py-6;
+    gap: 1.5rem;
+  }
+
+  .home-intro h1 {
+    @apply text-4xl;
+  }
+
+  .home-intro > p:last-of-type {
+    @apply text-lg;
+  }
+
+  .home-footer {
+    @apply items-stretch;
+  }
+
+  .home-code,
+  .home-caregiver-link {
+    @apply justify-center;
   }
 }
