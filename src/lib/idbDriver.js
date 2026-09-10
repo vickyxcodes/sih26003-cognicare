@@ -5,17 +5,19 @@
  * rules about what gets written live in the testable `store.js` and this file
  * stays boring on purpose: open the database, put, get, getAll, delete, clear.
  *
- * Schema (version 1):
+ * Schema (version 2):
  *   answers        auto id  - one row per tap, local only
  *   sessions       auto id  - one row per finished session, index on `synced`
  *   reminderEvents auto id  - one row per dismissed/missed reminder, index on `synced`
+ *   rememberThis    auto id  - local delayed-recall memories
+ *   manualReminders auto id - local one-time reminders
  *   settings       key      - pairing code, device id, last sync time
  */
 import { openDB } from 'idb';
 import { STORES } from './store.js';
 
 export const DB_NAME = 'cognicare';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /** True when this browser can actually give us IndexedDB. */
 export function isIndexedDbAvailable() {
@@ -42,6 +44,16 @@ function upgrade(db) {
     const events = db.createObjectStore(STORES.reminderEvents, { keyPath: 'id', autoIncrement: true });
     events.createIndex('by-timestamp', 'timestamp');
     events.createIndex('by-synced', 'synced');
+  }
+  if (!db.objectStoreNames.contains(STORES.rememberThis)) {
+    const memories = db.createObjectStore(STORES.rememberThis, { keyPath: 'id', autoIncrement: true });
+    memories.createIndex('by-dueAt', 'dueAt');
+    memories.createIndex('by-status', 'status');
+  }
+  if (!db.objectStoreNames.contains(STORES.manualReminders)) {
+    const reminders = db.createObjectStore(STORES.manualReminders, { keyPath: 'id', autoIncrement: true });
+    reminders.createIndex('by-reminderAt', 'reminderAt');
+    reminders.createIndex('by-status', 'status');
   }
   if (!db.objectStoreNames.contains(STORES.settings)) {
     db.createObjectStore(STORES.settings, { keyPath: 'key' });

@@ -7,11 +7,15 @@ import CaregiverDashboard from './pages/CaregiverDashboard.jsx';
 import LanguageSelector from './components/LanguageSelector.jsx';
 import { LanguageProvider } from './components/LanguageContext.jsx';
 import ReminderOverlay from './components/ReminderOverlay.jsx';
+import RememberThisOverlay from './components/RememberThisOverlay.jsx';
+import ManualReminderOverlay from './components/ManualReminderOverlay.jsx';
 import PatientProfile from './pages/PatientProfile.jsx';
 import AboutMePlay from './pages/AboutMePlay.jsx';
 import { getStore } from './lib/db.js';
 import RoleChooser from './pages/RoleChooser.jsx';
 import CaregiverPatientSetup from './pages/CaregiverPatientSetup.jsx';
+import RememberThis from './pages/RememberThis.jsx';
+import ManualReminders from './pages/ManualReminders.jsx';
 import { APP_ROLE_SETTING, APP_ROLES } from './lib/appRole.js';
 
 /**
@@ -37,12 +41,17 @@ function PatientLayout() {
 }
 
 function PatientLayoutContent() {
-  const [reminderOnScreen, setReminderOnScreen] = useState(false);
+  const [systemReminderOnScreen, setReminderOnScreen] = useState(false);
+  const [rememberOnScreen, setRememberOnScreen] = useState(false);
+  const [manualReminderOnScreen, setManualReminderOnScreen] = useState(false);
+  const reminderOnScreen = systemReminderOnScreen || rememberOnScreen || manualReminderOnScreen;
   return (
     <div className="app-shell min-h-screen">
       <LanguageSelector />
       <Outlet context={{ reminderOnScreen }} />
       <ReminderOverlay onShowing={setReminderOnScreen} />
+      <RememberThisOverlay onShowing={setRememberOnScreen} blocked={systemReminderOnScreen} />
+      <ManualReminderOverlay onShowing={setManualReminderOnScreen} blocked={systemReminderOnScreen || rememberOnScreen} />
     </div>
   );
 }
@@ -80,6 +89,8 @@ export default function App() {
           <Route element={<RequirePatientProfile />}>
             <Route path="/patient" element={<PatientHome />} />
             <Route path="/patient/profile" element={<PatientProfile edit />} />
+            <Route path="/remember" element={<RememberThis />} />
+            <Route path="/reminders" element={<ManualReminders />} />
             <Route path="/play" element={<Play />} />
             <Route path="/play/routine" element={<Play />} />
             <Route path="/play/words" element={<Play />} />

@@ -53,7 +53,7 @@ test('every button declares an explicit type', () => {
 test('patient home offers every game plus the caregiver link', () => {
   const src = read(join(SRC, 'pages', 'PatientHome.jsx'));
   assert.equal((src.match(/<button\b/g) || []).length, 1, 'home must have a single button');
-  assert.equal((src.match(/<Link\b/g) || []).length, 7, 'home must link to every game, profile and caregivers');
+  assert.equal((src.match(/<Link\b/g) || []).length, 9, 'home must link to every game, profile and caregivers');
   // The Play control is a <button>, not a <Link>: tapping it also has to prime
   // the speech synthesiser inside a real user gesture (see step 7).
   assert.match(src, /navigate\('\/play'\)/);

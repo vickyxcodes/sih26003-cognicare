@@ -16,11 +16,25 @@
  *   settings       key/value: pairing code, device id, last sync time.
  */
 import { assertSafeRecord } from './privacy.js';
+import {
+  completeRememberThis,
+  dismissRememberThis,
+  isRememberThisRecord,
+  makeRememberThis,
+  markRememberDue,
+} from './rememberThis.js';
+import {
+  completeManualReminder,
+  isManualReminderRecord,
+  makeManualReminder,
+} from './manualReminder.js';
 
 export const STORES = {
   answers: 'answers',
   sessions: 'sessions',
   reminderEvents: 'reminderEvents',
+  rememberThis: 'rememberThis',
+  manualReminders: 'manualReminders',
   settings: 'settings',
 };
 
@@ -117,6 +131,11 @@ export function createRecordStore(driver, { now = Date.now } = {}) {
     return out;
   };
 
+  const localRows = async (storeName) => {
+    const all = await driver.getAll(storeName);
+    return all.sort((a, b) => Number(a.createdAt || a.reminderAt || a.dueAt || 0) - Number(b.createdAt || b.reminderAt || b.dueAt || 0));
+  };
+
   const localProfile = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const allowed = [
@@ -181,6 +200,85 @@ export function createRecordStore(driver, { now = Date.now } = {}) {
     answers: (opts) => rows(STORES.answers, opts),
     sessions: (opts) => rows(STORES.sessions, opts),
     reminderEvents: (opts) => rows(STORES.reminderEvents, opts),
+
+    /** Local delayed-recall records. These never enter pendingSync or Firestore. */
+    async saveRememberThis(input) {
+      return write(STORES.rememberThis, makeRememberThis({ ...input, createdAt: input?.createdAt ?? now() }));
+    },
+
+    async rememberThis() {
+      return (await localRows(STORES.rememberThis)).filter(isRememberThisRecord);
+    },
+
+    async refreshRememberThis() {
+      const all = await localRows(STORES.rememberThis);
+      const valid = [];
+      for (const row of all) {
+        if (!isRememberThisRecord(row)) continue;
+        const next = markRememberDue(row, now());
+        if (next.status !== row.status) await driver.put(STORES.rememberThis, next);
+        valid.push(next);
+      }
+      return valid;
+    },
+
+    async completeRememberThis(id, input) {
+      const row = await driver.get(STORES.rememberThis, id);
+      if (!isRememberThisRecord(row)) return null;
+      const next = completeRememberThis(row, { ...input, now: input?.now ?? now() });
+      await driver.put(STORES.rememberThis, next);
+      return next;
+    },
+
+    async dismissRememberThis(id, at = now()) {
+      const row = await driver.get(STORES.rememberThis, id);
+      if (!isRememberThisRecord(row)) return null;
+      const next = dismissRememberThis(row, at);
+      await driver.put(STORES.rememberThis, next);
+      return next;
+    },
+
+    async deleteRememberThis(id) {
+      await driver.delete(STORES.rememberThis, id);
+    },
+
+    /** Local one-time manual reminders; system reminders continue using the schedule above. */
+    async saveManualReminder(input) {
+      return write(STORES.manualReminders, makeManualReminder({ ...input, createdAt: input?.createdAt ?? now() }));
+    },
+
+    async manualReminders() {
+      return (await localRows(STORES.manualReminders)).filter(isManualReminderRecord);
+    },
+
+    async dueManualReminders(at = now()) {
+      return (await localRows(STORES.manualReminders))
+        .filter((row) => isManualReminderRecord(row) && row.status === 'scheduled' && Number(row.reminderAt) <= at);
+    },
+
+    async updateManualReminder(id, input) {
+      const row = await driver.get(STORES.manualReminders, id);
+      if (!isManualReminderRecord(row)) return null;
+      const next = makeManualReminder({ ...row, ...input, createdAt: row.createdAt });
+      next.id = row.id;
+      next.status = row.status;
+      next.completedAt = row.completedAt;
+      assertSafeRecord(next, STORES.manualReminders);
+      await driver.put(STORES.manualReminders, next);
+      return next;
+    },
+
+    async completeManualReminder(id, at = now()) {
+      const row = await driver.get(STORES.manualReminders, id);
+      if (!isManualReminderRecord(row)) return null;
+      const next = completeManualReminder(row, at);
+      await driver.put(STORES.manualReminders, next);
+      return next;
+    },
+
+    async deleteManualReminder(id) {
+      await driver.delete(STORES.manualReminders, id);
+    },
 
     /**
      * Everything still waiting to reach Firestore. Filtered in JS rather than

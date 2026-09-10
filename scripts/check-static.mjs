@@ -44,6 +44,8 @@ const ROUTES = new Set([
   '/patient',
   '/patient/onboarding',
   '/patient/profile',
+  '/remember',
+  '/reminders',
   '/caregiver',
   '/caregiver/patient',
   '/caregiver/dashboard',

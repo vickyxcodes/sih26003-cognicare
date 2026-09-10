@@ -74,6 +74,16 @@ export default function PatientHome() {
       </button>
 
       <section className="home-games" aria-label={t('home.choose')}>
+        <Link to="/remember" className="home-game-card tap-target min-h-[180px] flex-col items-start justify-start gap-2 px-5 py-5 text-left">
+          <span className="home-game-kicker">{t('home.activity7')}</span>
+          <span className="text-xl font-bold">{t('home.rememberThis')}</span>
+          <span className="text-sm font-medium text-ink-soft/75">{t('home.rememberThisSub')}</span>
+        </Link>
+        <Link to="/reminders" className="home-game-card tap-target min-h-[180px] flex-col items-start justify-start gap-2 px-5 py-5 text-left">
+          <span className="home-game-kicker">{t('home.activity8')}</span>
+          <span className="text-xl font-bold">{t('home.reminders')}</span>
+          <span className="text-sm font-medium text-ink-soft/75">{t('home.remindersSub')}</span>
+        </Link>
         <Link to="/play/routine" className="home-game-card tap-target min-h-[180px] flex-col items-start justify-start gap-2 px-5 py-5 text-left">
           <span className="home-game-kicker">{t('home.activity2')}</span>
           <span className="text-xl font-bold">{t('home.routine')}</span>

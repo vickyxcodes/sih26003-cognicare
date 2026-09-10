@@ -191,6 +191,41 @@
   .profile-input { @apply mt-5 min-h-tap w-full rounded-xl2 border-2 border-primary/30 bg-white px-5 text-2xl text-ink outline-none; }
   .profile-input:focus { @apply border-primary ring-4 ring-primary/15; }
 
+  .remember-screen,
+  .manual-screen { @apply pb-12; }
+
+  .remember-textarea {
+    @apply block w-full rounded-xl2 border-2 border-primary/30 bg-white px-5 py-4 text-2xl leading-relaxed text-ink outline-none;
+  }
+
+  .remember-textarea:focus,
+  .remember-select:focus { @apply border-primary ring-4 ring-primary/15; }
+
+  .remember-select {
+    @apply min-h-tap w-full rounded-xl2 border-2 border-primary/30 bg-white px-5 text-xl text-ink outline-none;
+  }
+
+  .remember-list { @apply grid gap-3; }
+
+  .remember-list-item {
+    @apply flex flex-wrap items-center gap-3 rounded-xl2 border border-ink-soft/10 bg-paper p-4;
+  }
+
+  .remember-status {
+    @apply rounded-full px-3 py-2 text-sm font-bold;
+  }
+
+  .remember-status-pending { @apply bg-primary-light text-primary-dark; }
+  .remember-status-due { @apply bg-warn-light text-warn; }
+  .remember-status-completed { @apply bg-good-light text-good; }
+  .remember-status-dismissed { @apply bg-ink-soft/10 text-ink-soft; }
+
+  .remember-small-button { @apply min-h-[64px] px-4 text-base; }
+  .remember-overlay-card { @apply border-4 border-primary/20 shadow-2xl; }
+
+  .form-label { @apply block text-xl font-bold text-ink; }
+  .form-label > input { @apply mt-2; }
+
   .role-screen { @apply flex min-h-screen items-center justify-center px-5 py-8; }
   .role-card { @apply w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10; }
   .role-choice { @apply flex min-h-[132px] flex-col items-center justify-center text-center; }
