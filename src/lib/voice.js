@@ -9,8 +9,10 @@
  * keeps the "one reusable speak() helper" rule true as the app grows.
  */
 import { createSpeaker } from './speak.js';
+import { DEFAULT_LANGUAGE, isLanguage } from './i18n.js';
 
 let speaker = null;
+let speechLanguage = DEFAULT_LANGUAGE;
 
 function build() {
   const hasWindow = typeof window !== 'undefined';
@@ -23,6 +25,7 @@ function build() {
   const made = createSpeaker({
     synth,
     makeUtterance,
+    language: speechLanguage,
     onError: (error) => console.warn('[CogniCare] speech failed:', error),
   });
   if (!made.isSupported()) {
@@ -37,9 +40,10 @@ export function getSpeaker() {
   return speaker;
 }
 
-/** Say one line now, interrupting anything still being spoken. */
-export function speak(text) {
-  return getSpeaker().speak(text);
+/** Say one line now, interrupting anything still being spoken. `fallbackText` is
+ * used only when Assamese is selected but this browser has no Assamese voice. */
+export function speak(text, fallbackText = '') {
+  return getSpeaker().speak(text, fallbackText);
 }
 
 /** Open the speech queue from inside a user gesture (the Play tap). */
@@ -56,8 +60,16 @@ export function isSpeechSupported() {
   return getSpeaker().isSupported();
 }
 
+/** Select the patient language for all future utterances. */
+export function setSpeechLanguage(language) {
+  speechLanguage = isLanguage(language) ? language : DEFAULT_LANGUAGE;
+  if (speaker?.setLanguage) speaker.setLanguage(speechLanguage);
+  return speechLanguage;
+}
+
 /** Replaces the speaker - used by tests and by nothing else. */
 export function useSpeaker(custom) {
   speaker = custom;
+  if (speaker?.setLanguage) speaker.setLanguage(speechLanguage);
   return speaker;
 }

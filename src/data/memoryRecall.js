@@ -55,14 +55,24 @@ const option = (id) => ({ id, item: id, text: itemLabel(id) });
 export const MEMORY_RECALL = {
   domain: 'memory_recall',
   name: 'Remember the picture',
+  /** The direct route to this game, and how the play screen recognises it. */
+  path: '/play',
   /** How the counter in the header reads: "Picture 3 of 8". */
   unitLabel: 'Picture',
+  benefit: 'Builds picture recall and gentle recognition.',
+  difficultyGuide: {
+    1: 'One clear picture with a generous viewing time.',
+    2: 'The picture stays for less time.',
+    3: 'The choices look more alike, so details matter more.',
+  },
   /** What the difficulty transition adds, in this domain's own terms. */
   tierDetail: {
     easier: 'The next pictures stay on screen for longer.',
     harder: 'The next pictures are a little quicker.',
   },
   doneLine: (correct, asked) => `You remembered ${correct} of ${asked} pictures today.`,
+  /** How a wrong answer is put, warmly, in this domain's own terms. */
+  missLine: (words) => `It was the ${words}`,
   questions: PAIRS.map(([tier, show, distractor], i) => ({
     id: `mr-${i + 1}`,
     tier,

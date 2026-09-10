@@ -135,8 +135,9 @@ test('the browser speech API is confined to one adapter file', () => {
 test('the game screen speaks its prompts through the helper, never inline', () => {
   const play = read('src', 'pages', 'Play.jsx');
   assert.match(play, /import \{[^}]*\bspeak\b[^}]*\} from '\.\.\/lib\/voice\.js'/);
-  assert.match(play, /speak\(session\.question\.studyPrompt\)/);
-  assert.match(play, /speak\(session\.question\.prompt\)/);
+  assert.match(play, /speak\(displayQuestion\.studyPrompt, englishQuestion\.studyPrompt\)/, 'the spoken study prompt comes from the localized question with a fallback');
+  assert.match(play, /displayQuestion\.prompt/);
+  assert.match(play, /choicesSpeech\(displayQuestion, language\)/, 'the spoken ask phase must include every localized option');
   assert.ok(!/speechSynthesis/.test(play), 'the screen must not touch the speech API directly');
   // The feedback, tier and finished screens each say their own line too.
   assert.ok((play.match(/\bspeak\(/g) || []).length >= 5, 'every screen should speak for itself');
@@ -146,7 +147,7 @@ test('the game screen speaks its prompts through the helper, never inline', () =
 test('home greets on arrival and primes the speech queue inside the Play tap', () => {
   const home = read('src', 'pages', 'PatientHome.jsx');
   assert.match(home, /from '\.\.\/lib\/voice\.js'/);
-  assert.match(home, /speak\('Welcome to CogniCare/, 'a spoken greeting on arrival');
+  assert.match(home, /speak\(t\('home\.greeting'\), translate\('en', 'home\.greeting'\)\)/, 'a localized spoken greeting with a fallback');
   assert.match(
     home,
     /primeSpeech\(\);?[\s\S]{0,60}navigate\('\/play'\)/,

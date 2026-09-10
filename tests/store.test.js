@@ -74,8 +74,14 @@ test('bad records are refused rather than silently stored', async () => {
   );
 });
 
-test('the domains stored are exactly the two the Firestore schema allows', () => {
-  assert.deepEqual(DOMAINS, ['memory_recall', 'routine_matching']);
+test('the domains stored are exactly the ones the Firestore schema allows', () => {
+  assert.deepEqual(DOMAINS, [
+    'memory_recall',
+    'routine_matching',
+    'word_recall',
+    'number_sequence',
+    'pattern_matching',
+  ]);
 });
 
 test('personal and medical fields cannot be written, even by accident', async () => {

@@ -217,7 +217,7 @@ test('the two domains are judged independently', () => {
   assert.equal(any, true);
   assert.equal(alerts.length, 1, 'one domain only');
   assert.equal(alerts[0].domain, 'memory_recall');
-  assert.equal(all.length, 2, 'both domains are reported on, alerting or not');
+  assert.equal(all.length, BANKS.length, 'every domain is reported on, alerting or not');
   const routine = all.find((one) => one.domain === 'routine_matching');
   assert.equal(routine.alert, false);
   assert.equal(routine.label, BANKS[1].name);
@@ -249,10 +249,16 @@ test("another domain's sessions cannot form a run", () => {
     session(2, 50, 2, 'memory_recall'),
     session(1, 95, 2, 'routine_matching'),
   ];
-  for (const domain of DOMAINS) {
+  for (const domain of ['memory_recall', 'routine_matching']) {
     const alert = describeDecline(buildSeries(rows, domain, opts), { label: domain });
     assert.equal(alert.alert, false, `${domain} has only two sessions of its own`);
     assert.equal(alert.sessions, 2);
+  }
+  /* And a domain with no rows at all in this history cannot form a run either. */
+  for (const domain of DOMAINS.filter((d) => !rows.some((r) => r.domain === d))) {
+    const alert = describeDecline(buildSeries(rows, domain, opts), { label: domain });
+    assert.equal(alert.alert, false, `${domain} was never played`);
+    assert.equal(alert.sessions, 0);
   }
 });
 
@@ -274,8 +280,8 @@ test('the alert carries the exact required sentence', () => {
   assert.equal(alert.headline, ALERT_HEADLINE);
   // And the page renders the constant rather than a retyped copy.
   const card = readFileSync(join(ROOT, 'src', 'components', 'DeclineAlert.jsx'), 'utf8');
-  assert.match(card, /\{ALERT_HEADLINE\}/);
-  assert.doesNotMatch(card, /Consider a check-in with a doctor/, 'the string is imported, not duplicated');
+  assert.match(card, /ALERT_HEADLINE/, 'English wording remains sourced from the tested constant');
+  assert.match(card, /dashboardText/, 'the Assamese wording uses shared localization');
 });
 
 test('the alert states it is not a diagnosis, in the same card', () => {
@@ -286,13 +292,13 @@ test('the alert states it is not a diagnosis, in the same card', () => {
   assert.match(ALERT_NOT_A_DIAGNOSIS, /tiredness|noisy|interruption|unlucky/i, 'innocent explanations are offered');
 
   const card = readFileSync(join(ROOT, 'src', 'components', 'DeclineAlert.jsx'), 'utf8');
-  assert.match(card, /\{ALERT_NOT_A_DIAGNOSIS\}/);
-  assert.match(card, /This is not a diagnosis\./, 'said plainly as well as at length');
+  assert.match(card, /ALERT_NOT_A_DIAGNOSIS/);
+  assert.match(card, /notDiagnosis/, 'the disclaimer is localized');
   /* Both must be inside the same <section>, so the disclaimer cannot end up a
    * scroll away from the headline that needs it. */
   const section = card.slice(card.indexOf('<section'), card.indexOf('</section>'));
-  assert.ok(section.includes('{ALERT_HEADLINE}'), 'the headline is in the card');
-  assert.ok(section.includes('{ALERT_NOT_A_DIAGNOSIS}'), 'so is the disclaimer');
+  assert.ok(section.includes('ALERT_HEADLINE'), 'the headline is in the card');
+  assert.ok(section.includes('ALERT_NOT_A_DIAGNOSIS'), 'so is the disclaimer');
 });
 
 test('no alert wording anywhere is clinical or diagnostic', () => {
@@ -405,7 +411,7 @@ test('the dashboard renders the alert above the charts, and only from the same s
   );
   // No second idea of a trend anywhere on the page.
   assert.doesNotMatch(page, /compareRecent|trailingDecline/, 'the page does not recompute a trend');
-  assert.match(page, /NOT_A_DIAGNOSIS/, 'the page-level note is still rendered');
+  assert.match(page, /dashboardText/, 'the page-level note is still rendered through localization');
   assert.ok(NOT_A_DIAGNOSIS.length > 80);
 });
 

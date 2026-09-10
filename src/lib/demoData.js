@@ -37,8 +37,19 @@
  */
 import { DEMO_FLAG, DOMAINS, HISTORY_STORES, REMINDER_TYPES, STORES } from './store.js';
 
-/** The two domains, in the order the dashboard lists them. */
+/** The first two domains, in the order the dashboard lists them. */
 export const [MEMORY_DOMAIN, ROUTINE_DOMAIN] = DOMAINS;
+
+/**
+ * The domains the demo history covers.
+ *
+ * Deliberately not all of `DOMAINS`. The demo exists to tell one story - one
+ * domain declining and another holding steady - and five charts of fabricated
+ * data would bury it. The three later domains are played for real; a demo device
+ * simply shows them as "not played yet", which is an honest thing for a
+ * dashboard to show and is what a real patient's first week looks like anyway.
+ */
+export const DEMO_DOMAINS = [MEMORY_DOMAIN, ROUTINE_DOMAIN];
 
 /**
  * The domain that trends downward, and the one that stays level.

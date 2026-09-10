@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .patient-language-bar {
+    @apply fixed right-4 top-3 z-40;
+  }
+
+  .language-select {
+    @apply min-h-tap rounded-full border-2 border-primary/30 bg-white/95 px-4 text-lg font-semibold text-ink shadow-card outline-none;
+  }
+}
+
 @layer base {
   html {
     /* Design system rule: everything is sized in rem off a 20px root, so the
@@ -105,7 +115,7 @@
   }
 
   .home-intro {
-    @apply mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center;
+    @apply mx-0 flex w-full max-w-4xl flex-1 flex-col justify-center;
   }
 
   .home-eyebrow {
@@ -134,16 +144,23 @@
     @apply flex h-20 w-20 items-center justify-center rounded-full bg-white/15;
   }
 
-  .home-secondary {
-    @apply mt-5;
+  .home-games {
+    @apply mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4;
+  }
+
+  .home-game-card {
     border: 2px solid rgba(15, 118, 110, 0.22);
     background: rgba(255, 255, 255, 0.78);
     box-shadow: 0 8px 24px rgba(20, 32, 46, 0.06);
   }
 
-  .home-secondary:hover {
+  .home-game-card:hover {
     border-color: rgba(15, 118, 110, 0.48);
     background: #ffffff;
+  }
+
+  .home-game-kicker {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-primary;
   }
 
   .home-footer {
@@ -165,6 +182,264 @@
 
   .home-code-loading {
     @apply text-ink-soft/70;
+  }
+
+  .play-header {
+    @apply flex-wrap;
+  }
+
+  .play-skip {
+    @apply min-h-tap px-4 text-sm;
+  }
+
+  .play-overview {
+    @apply grid gap-4 md:grid-cols-[1.35fr_1fr];
+  }
+
+  .play-level,
+  .play-stats {
+    @apply p-5;
+  }
+
+  .play-label {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-primary;
+  }
+
+  .play-level-number {
+    @apply text-sm font-bold text-ink-soft;
+  }
+
+  .play-level-help {
+    @apply mt-2 text-lg font-semibold leading-snug text-ink;
+  }
+
+  .play-benefit {
+    @apply mt-2 text-sm leading-relaxed text-ink-soft;
+  }
+
+  .play-stats {
+    @apply grid grid-cols-3 items-center gap-3;
+  }
+
+  .play-stats > div {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+
+  .play-stats strong {
+    @apply text-lg leading-tight text-ink;
+  }
+
+  .dashboard-shell {
+    @apply mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 sm:py-8;
+  }
+
+  .dashboard-nav {
+    @apply flex items-center justify-between gap-4 border-b border-ink-soft/10 pb-5;
+  }
+
+  .dashboard-hero {
+    @apply mt-8 rounded-xl2 border border-primary/15 bg-white/80 p-6 shadow-card sm:p-8;
+  }
+
+  .dashboard-eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-primary;
+  }
+
+  .dashboard-hero h1 {
+    @apply mt-2 text-4xl font-bold tracking-tight text-ink sm:text-5xl;
+  }
+
+  .dashboard-hero > p:not(.dashboard-eyebrow) {
+    @apply mt-3 max-w-2xl text-lg text-ink-soft;
+  }
+
+  .dashboard-context {
+    @apply mt-6 flex flex-wrap items-center gap-3 text-sm text-ink-soft;
+  }
+
+  .dashboard-context strong {
+    @apply font-bold tracking-wider text-ink;
+  }
+
+  .dashboard-status {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold;
+  }
+
+  .dashboard-status-neutral {
+    @apply bg-primary-light text-ink-soft;
+  }
+
+  .dashboard-status-good {
+    @apply bg-good-light text-good;
+  }
+
+  .dashboard-status-warn {
+    @apply bg-warn-light text-warn;
+  }
+
+  .dashboard-actions {
+    @apply mt-4;
+  }
+
+  .dashboard-controls {
+    @apply flex flex-wrap items-center justify-end gap-3;
+  }
+
+  .dashboard-notice {
+    @apply mt-5 rounded-xl2 px-5 py-4 text-sm;
+  }
+
+  .dashboard-notice-warn {
+    @apply border border-warn/25 bg-warn-light text-ink;
+  }
+
+  .dashboard-kpis {
+    @apply mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .dashboard-kpi {
+    @apply rounded-xl2 border border-ink-soft/10 bg-white p-5 shadow-card;
+  }
+
+  .dashboard-kpi-title {
+    @apply text-sm font-bold text-ink-soft;
+  }
+
+  .dashboard-kpi-value {
+    @apply text-3xl font-bold tracking-tight text-ink;
+  }
+
+  .dashboard-kpi-note {
+    @apply mt-3 text-sm leading-relaxed text-ink;
+  }
+
+  .dashboard-kpi-detail {
+    @apply mt-2 text-xs text-ink-soft;
+  }
+
+  .dashboard-panel {
+    @apply mt-6 rounded-xl2 border border-ink-soft/10 bg-white p-5 shadow-card sm:p-7;
+  }
+
+  .dashboard-section-heading {
+    @apply mb-6 flex flex-wrap items-end justify-between gap-3;
+  }
+
+  .dashboard-section-heading h2 {
+    @apply mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl;
+  }
+
+  .dashboard-section-heading > p {
+    @apply max-w-md text-sm leading-relaxed text-ink-soft;
+  }
+
+  .dashboard-empty-state {
+    @apply rounded-xl2 border-2 border-dashed border-ink-soft/20 bg-paper px-5 py-8 text-center;
+  }
+
+  .dashboard-comparison {
+    @apply grid gap-5 md:grid-cols-2;
+  }
+
+  .dashboard-comparison-row {
+    @apply rounded-xl2 bg-paper p-4;
+  }
+
+  .dashboard-bar-track {
+    @apply mt-3 h-3 overflow-hidden rounded-full bg-ink-soft/10;
+  }
+
+  .dashboard-bar {
+    @apply block h-full rounded-full bg-primary transition-[width] duration-300;
+  }
+
+  .dashboard-insights {
+    @apply grid gap-4 lg:grid-cols-2;
+  }
+
+  .dashboard-insight {
+    @apply rounded-xl2 border border-ink-soft/10 bg-paper p-5;
+  }
+
+  .dashboard-insight h3,
+  .dashboard-domain-card h3 {
+    @apply text-lg font-bold text-ink;
+  }
+
+  .dashboard-reminder-stats {
+    @apply grid gap-3 sm:grid-cols-3;
+  }
+
+  .dashboard-reminder-stats > div {
+    @apply rounded-xl2 bg-paper p-4;
+  }
+
+  .dashboard-reminder-stats span {
+    @apply block text-xs font-bold uppercase tracking-wide text-ink-soft;
+  }
+
+  .dashboard-reminder-stats strong {
+    @apply mt-1 block text-2xl font-bold text-ink;
+  }
+
+  .dashboard-table-wrap {
+    @apply overflow-x-auto rounded-xl2 border border-ink-soft/10;
+  }
+
+  .dashboard-table {
+    @apply w-full min-w-[34rem] text-left text-sm;
+  }
+
+  .dashboard-table th {
+    @apply bg-paper px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink-soft;
+  }
+
+  .dashboard-table td {
+    @apply border-t border-ink-soft/10 px-4 py-3 text-ink;
+  }
+
+  .dashboard-timeline {
+    @apply divide-y divide-ink-soft/10;
+  }
+
+  .dashboard-timeline li {
+    @apply flex items-center gap-4 py-4 first:pt-0 last:pb-0;
+  }
+
+  .dashboard-timeline-dot {
+    @apply h-3 w-3 shrink-0 rounded-full bg-primary;
+  }
+
+  .dashboard-timeline-dot-reminder {
+    @apply bg-warn;
+  }
+
+  .dashboard-domain-grid {
+    @apply grid gap-4 lg:grid-cols-2;
+  }
+
+  .dashboard-domain-card {
+    @apply rounded-xl2 border border-ink-soft/10 bg-paper p-5;
+  }
+
+  .dashboard-domain-stats {
+    @apply mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4;
+  }
+
+  .dashboard-domain-stats > div {
+    @apply rounded-xl2 bg-white p-3;
+  }
+
+  .dashboard-domain-stats dt {
+    @apply text-xs font-bold uppercase tracking-wide text-ink-soft;
+  }
+
+  .dashboard-domain-stats dd {
+    @apply mt-1 text-xl font-bold text-ink;
+  }
+
+  .dashboard-disclaimer {
+    @apply mt-6 rounded-xl2 bg-primary-light px-5 py-4 text-sm leading-relaxed text-ink-soft;
   }
 }
 

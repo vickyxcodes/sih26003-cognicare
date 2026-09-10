@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import TrendChart from '../components/TrendChart.jsx';
+import PerformanceChart from '../components/PerformanceChart.jsx';
 import DeclineAlert from '../components/DeclineAlert.jsx';
 import { HeartMark } from '../components/icons.jsx';
 import { BANKS } from '../data/banks.js';
+import LanguageSelector from '../components/LanguageSelector.jsx';
+import { useLanguage } from '../components/LanguageContext.jsx';
 import { getStore } from '../lib/db.js';
 import { createFirestoreRemote } from '../lib/remote.js';
 import {
@@ -17,11 +20,21 @@ import {
 } from '../lib/caregiverData.js';
 import {
   CHART_POINTS,
-  NOT_A_DIAGNOSIS,
   buildSeries,
   declineAlerts,
   describeTrend,
 } from '../lib/trends.js';
+import {
+  buildDomainMetrics,
+  buildOverallMetric,
+  buildRecentActivity,
+} from '../lib/caregiverMetrics.js';
+import {
+  dashboardText,
+  localizeBank,
+  localizedReading,
+  localizedTrendLabel,
+} from '../lib/i18n.js';
 
 /**
  * /caregiver/dashboard - the read-only side of the app.
@@ -37,41 +50,24 @@ import {
  * It composes the Firestore remote itself, exactly as `main.jsx` does for the
  * sync manager, so the logic module underneath stays free of Firebase.
  */
-function Row({ label, value, note }) {
-  return (
-    <div className="border-t border-ink-soft/15 pt-3 first:border-0 first:pt-0">
-      <p className="text-base font-semibold uppercase tracking-wide text-ink-soft/80">{label}</p>
-      <p className="text-lg text-ink">{value}</p>
-      {note ? <p className="mt-1 text-base text-ink-soft">{note}</p> : null}
-    </div>
-  );
-}
-
-function Reading({ reading }) {
-  return (
-    <div className="mt-4">
-      <p className="text-xl font-semibold text-ink">{reading.headline}</p>
-      <p className="mt-2 text-ink-soft">{reading.detail}</p>
-      {reading.difficulty ? <p className="mt-1 text-ink-soft">{reading.difficulty}</p> : null}
-    </div>
-  );
-}
-
 const PHASE = { checking: 'checking', unpaired: 'unpaired', loading: 'loading', ready: 'ready', failed: 'failed' };
 
 function Shell({ children }) {
+  const { language } = useLanguage();
+  const d = (key, values) => dashboardText(language, key, values);
   return (
-    <main className="screen">
-      <header className="mb-6 flex items-center justify-between gap-4">
+    <main className="dashboard-shell">
+      <LanguageSelector />
+      <header className="dashboard-nav">
         <span className="flex items-center gap-3 text-primary">
           <HeartMark className="h-9 w-9" />
-          <span className="text-lg font-semibold text-ink-soft">CogniCare</span>
+          <span className="text-lg font-bold text-ink">CogniCare</span>
         </span>
         <Link
           to="/"
           className="min-h-tap flex items-center px-4 text-base text-ink-soft/70 underline decoration-ink-soft/30"
         >
-          Back to patient home
+          {d('backHome')}
         </Link>
       </header>
       {children}
@@ -79,13 +75,64 @@ function Shell({ children }) {
   );
 }
 
-function countWords(series) {
-  if (series.count === 0) return 'No sessions yet';
-  if (series.total > series.count) return `The last ${series.count} of ${series.total} sessions`;
-  return series.count === 1 ? 'One session' : `${series.count} sessions`;
+function maskedCode(code) {
+  return code ? `••••${code.slice(-2)}` : 'paired device';
+}
+
+function scoreWords(value) {
+  return value === null ? '—' : `${value}%`;
+}
+
+function activityTitle(item, language) {
+  if (item.kind === 'session') {
+    const bank = BANKS.find((candidate) => candidate.domain === item.source.domain);
+    return bank ? localizeBank(bank, language).name : item.title;
+  }
+  const labels = language === 'as'
+    ? { medicine: 'দৰৱৰ সোঁৱৰণী', hydration: 'পানীৰ সোঁৱৰণী', appointment: 'সাক্ষাতৰ সোঁৱৰণী' }
+    : { medicine: 'Medicine reminder', hydration: 'Water reminder', appointment: 'Appointment reminder' };
+  return labels[item.source.type] || item.title;
+}
+
+function activityDetail(item, language) {
+  if (item.kind === 'session') {
+    return language === 'as' ? `${item.source.score}% স্ক’ৰ` : `${item.source.score}% score`;
+  }
+  return item.source.status === 'dismissed'
+    ? dashboardText(language, 'statusCompleted')
+    : dashboardText(language, 'statusMissed');
+}
+
+function StatusPill({ label, tone = 'neutral' }) {
+  return <span className={`dashboard-status dashboard-status-${tone}`}>{label}</span>;
+}
+
+function KpiCard({ title, value, trend, trendDirection, note, detail }) {
+  return (
+    <article className="dashboard-kpi">
+      <p className="dashboard-kpi-title">{title}</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p className="dashboard-kpi-value">{value}</p>
+        {trend ? <StatusPill label={trend} tone={trendDirection === 'up' ? 'good' : trendDirection === 'down' ? 'warn' : 'neutral'} /> : null}
+      </div>
+      <p className="dashboard-kpi-note">{note}</p>
+      {detail ? <p className="dashboard-kpi-detail">{detail}</p> : null}
+    </article>
+  );
+}
+
+function EmptyState({ title, children }) {
+  return (
+    <div className="dashboard-empty-state">
+      <p className="font-semibold text-ink">{title}</p>
+      {children ? <p className="mt-1 text-ink-soft">{children}</p> : null}
+    </div>
+  );
 }
 
 export default function CaregiverDashboard() {
+  const { language } = useLanguage();
+  const d = (key, values) => dashboardText(language, key, values);
   const store = useMemo(() => getStore(), []);
   const remote = useMemo(() => createFirestoreRemote(), []);
   const [phase, setPhase] = useState(PHASE.checking);
@@ -94,6 +141,20 @@ export default function CaregiverDashboard() {
   /** Frozen per load, so "Today at 9:15 am" cannot drift while the page sits open. */
   const [loadedAt, setLoadedAt] = useState(null);
   const [failure, setFailure] = useState('');
+  const [online, setOnline] = useState(() => (
+    typeof navigator === 'undefined' ? true : navigator.onLine !== false
+  ));
+
+  useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   const load = useCallback(
     async (pairingCode) => {
@@ -168,32 +229,59 @@ export default function CaregiverDashboard() {
     [snapshot, now]
   );
 
+  const metrics = useMemo(
+    () => buildDomainMetrics(snapshot ? snapshot.sessions : [], BANKS, { now }),
+    [snapshot, now]
+  );
+  const overall = useMemo(() => buildOverallMetric(metrics), [metrics]);
+  const activity = useMemo(
+    () => buildRecentActivity({
+      sessions: snapshot ? snapshot.sessions : [],
+      reminderRows: snapshot ? snapshot.reminderEvents : [],
+      banks: BANKS,
+      now,
+    }),
+    [snapshot, now]
+  );
+
+  const syncStatus = phase === PHASE.loading
+    ? { label: d('syncing'), tone: 'neutral' }
+    : phase === PHASE.failed || !online || snapshot?.fromCache || snapshot?.error || snapshot?.source === SOURCE.local
+      ? { label: d('offline'), tone: 'warn' }
+      : { label: d('online'), tone: 'good' };
+
+  const displayMetrics = useMemo(
+    () => metrics.map((metric) => ({
+      ...metric,
+      bank: localizeBank(metric.bank, language),
+      trendLabel: localizedTrendLabel(metric.trend, language),
+      reading: localizedReading(metric, language),
+    })),
+    [metrics, language]
+  );
+
   if (phase === PHASE.unpaired) return <Navigate to="/caregiver" replace />;
 
   if (phase === PHASE.checking) {
     return (
       <Shell>
-        <p className="text-ink-soft">Looking for a stored pairing code…</p>
+        <p className="text-ink-soft">{d('checkingCode')}</p>
       </Shell>
     );
   }
 
   const controls = (
-    <div className="mt-5 flex flex-wrap items-center gap-3">
-      <p className="text-lg text-ink-soft">
-        Paired with code <span className="font-bold tracking-widest text-ink">{code}</span>
-      </p>
-      <span className="grow" />
+    <div className="dashboard-controls">
       <button
         type="button"
         className="btn-quiet"
         onClick={() => load(code)}
         disabled={phase === PHASE.loading}
       >
-        {phase === PHASE.loading ? 'Checking…' : 'Check again'}
+        {phase === PHASE.loading ? d('checking') : d('checkAgain')}
       </button>
       <button type="button" className="btn-quiet" onClick={changeCode}>
-        Change code
+        {d('changeCode')}
       </button>
     </div>
   );
@@ -201,9 +289,13 @@ export default function CaregiverDashboard() {
   if (phase === PHASE.loading && !snapshot) {
     return (
       <Shell>
-        <h1 className="text-3xl font-bold">Caregiver dashboard</h1>
+        <section className="dashboard-hero">
+          <p className="dashboard-eyebrow">{d('view')}</p>
+          <h1>{d('title')}</h1>
+          <p>{d('reading')}</p>
+          <div className="dashboard-context"><StatusPill label={d('syncing')} /> <span>{d('paired')} {maskedCode(code)}</span></div>
+        </section>
         {controls}
-        <p className="mt-6 text-ink-soft">Reading the recorded sessions…</p>
       </Shell>
     );
   }
@@ -211,110 +303,248 @@ export default function CaregiverDashboard() {
   if (phase === PHASE.failed) {
     return (
       <Shell>
-        <h1 className="text-3xl font-bold">Caregiver dashboard</h1>
+        <section className="dashboard-hero">
+          <p className="dashboard-eyebrow">{d('view')}</p>
+          <h1>{d('title')}</h1>
+          <p>{d('refreshFailed')}</p>
+          <div className="dashboard-context"><StatusPill label={d('offline')} tone="warn" /> <span>{d('paired')} {maskedCode(code)}</span></div>
+        </section>
         {controls}
-        <section className="card mt-6">
-          <h2 className="text-xl font-semibold text-bad">Nothing could be read for this code.</h2>
+        <section className="card dashboard-panel mt-6">
+          <h2 className="text-xl font-semibold text-ink">{d('noCode')}</h2>
           <p className="mt-2 text-ink-soft">
-            The dashboard shows nothing rather than guessing. Try again, and if it keeps failing,
-            check that the code matches the one on the patient’s device.
+            {d('noCodeDetail')}
           </p>
-          {failure ? <p className="mt-2 text-base text-ink-soft/80">Reported reason: {failure}</p> : null}
+          {failure ? <p className="mt-2 text-base text-ink-soft/80">{d('reportedReason')}: {failure}</p> : null}
         </section>
       </Shell>
     );
   }
 
   const nothingRecorded = snapshot.sessions.length === 0 && snapshot.reminderEvents.length === 0;
+  const activeMetrics = displayMetrics.filter((metric) => metric.sessions > 0);
 
   return (
     <Shell>
-      <h1 className="text-3xl font-bold">Caregiver dashboard</h1>
-      {controls}
+      <section className="dashboard-hero">
+        <p className="dashboard-eyebrow">{d('view')}</p>
+        <h1>{d('title')}</h1>
+        <p>{d('summary')}</p>
+        <div className="dashboard-context">
+          <span>{d('paired')} <strong>{maskedCode(code)}</strong></span>
+          <StatusPill label={syncStatus.label} tone={syncStatus.tone} />
+          <span>{d('lastSynced')}: <strong>{freshness.syncValue}</strong></span>
+        </div>
+      </section>
+      <div className="dashboard-actions">{controls}</div>
 
       {freshness.warning ? (
-        <p role="status" className="mt-5 rounded-xl2 bg-warn-light px-5 py-4 text-ink">
+        <p role="status" className="dashboard-notice dashboard-notice-warn">
           {freshness.warning}
         </p>
       ) : null}
 
-      <section className="card mt-5 space-y-3">
-        <Row label="Last synced" value={freshness.syncValue} note={freshness.syncNote} />
-        <Row label="Latest activity" value={freshness.activityValue} note={freshness.activityNote} />
-        <Row
-          label="Reading from"
-          value={freshness.sourceWords || 'Nothing could be read for this code.'}
-          note={
-            snapshot.pending && snapshot.pending.sessions + snapshot.pending.reminderEvents > 0
-              ? `${snapshot.pending.sessions} sessions and ${snapshot.pending.reminderEvents} reminders on `
-                + 'this device have not reached the server yet. They are included above because they are '
-                + 'this device’s own records.'
-              : ''
-          }
+      <section className="dashboard-kpis" aria-label={d('summaryLabel')}>
+        <KpiCard
+          title={d('recentPerformance')}
+          value={scoreWords(overall.recent)}
+          trend={localizedTrendLabel(overall.trend, language)}
+          trendDirection={overall.trend}
+          note={overall.sessions ? d('recentAverage') : d('noSessions')}
+          detail={overall.sessions ? d('session', { count: overall.sessions, suffix: overall.sessions === 1 ? '' : 's' }) : d('playForTrend')}
+        />
+        {displayMetrics.map((metric) => (
+          <KpiCard
+            key={metric.bank.domain}
+            title={metric.bank.name}
+            value={scoreWords(metric.latest)}
+            trend={metric.trendLabel}
+            trendDirection={metric.trend}
+            note={metric.sessions ? d('average', { value: metric.average }) : d('noActivity')}
+            detail={metric.sessions ? `${d('session', { count: metric.sessions, suffix: metric.sessions === 1 ? '' : 's' })} · ${d('best', { value: metric.best })}` : d('afterPlayed')}
+          />
+        ))}
+        <KpiCard
+          title={d('recentActivity')}
+          value={String(overall.sessions)}
+          note={d('sessionsAvailable')}
+          detail={freshness.activityValue}
+        />
+        <KpiCard
+          title={d('reminderCompletion')}
+          value={log.completionRate === null ? '—' : `${log.completionRate}%`}
+          note={log.total ? d('completionNote') : d('noReminder')}
+          detail={log.total ? d('completedMissed', { done: log.totalDone, missed: log.totalMissed }) : d('reminderWillAppear')}
         />
       </section>
 
       {nothingRecorded && snapshot.source !== SOURCE.none ? (
-        <section className="card mt-5">
-          <h2 className="text-xl font-semibold">Nothing has been recorded for this code yet.</h2>
-          <p className="mt-2 text-ink-soft">
-            The charts below fill in on their own. Play a session on the patient’s device, and once that
-            device has been online the sessions appear here.
-          </p>
+        <section className="dashboard-panel">
+          <EmptyState title={d('noCognitive')}>
+            {d('trendsPrompt')}
+          </EmptyState>
         </section>
       ) : null}
 
       <DeclineAlert alerts={decline.alerts} />
 
-      {charts.map(({ bank, series, reading }) => (
-        <section key={bank.domain} className="card mt-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-2xl font-bold">{bank.name}</h2>
-            <p className="text-base text-ink-soft">{countWords(series)}</p>
+      <section className="dashboard-panel dashboard-performance">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('performanceOverTime')}</p>
+            <h2>{d('cognitivePerformance')}</h2>
           </div>
-          <div className="mt-4">
-            <TrendChart series={series} caption={reading.headline} />
+          <p>{d('lineHelp')}</p>
+        </div>
+        <PerformanceChart readings={displayMetrics} language={language} />
+      </section>
+
+      <section className="dashboard-panel">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('atAGlance')}</p>
+            <h2>{d('comparison')}</h2>
           </div>
-          <Reading reading={reading} />
-          {decline.all.find((one) => one.domain === bank.domain && one.alert) ? (
-            <p className="mt-3 text-base font-semibold text-warn">
-              This is the game the note at the top of the page is about.
-            </p>
-          ) : null}
-        </section>
-      ))}
-
-      <p className="mt-5 rounded-xl2 bg-primary-light px-5 py-4 text-base text-ink-soft">
-        {NOT_A_DIAGNOSIS} Each chart shows up to the last {CHART_POINTS} sessions of that game.
-      </p>
-
-      <section className="card mt-5">
-        <h2 className="text-2xl font-bold">Reminders</h2>
-        <p className="mt-2 text-ink-soft">{log.summary}</p>
-        {log.rows.length ? (
-          <ul className="mt-4 space-y-2">
-            {log.rows.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-wrap items-center gap-3 border-t border-ink-soft/15 pt-2 first:border-0 first:pt-0"
-              >
-                <span className="text-lg font-semibold">{row.typeLabel}</span>
-                <span
-                  className={
-                    row.tone === 'good'
-                      ? 'rounded-full bg-good-light px-3 py-1 text-base text-good'
-                      : 'rounded-full bg-warn-light px-3 py-1 text-base text-warn'
-                  }
-                >
-                  {row.statusLabel}
-                </span>
-                <span className="grow" />
-                <span className="text-base text-ink-soft">{row.when}</span>
-              </li>
+          <p>{d('averageByActivity')}</p>
+        </div>
+        {activeMetrics.length ? (
+          <div className="dashboard-comparison">
+            {activeMetrics.map((metric) => (
+              <div key={metric.bank.domain} className="dashboard-comparison-row">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-ink">{metric.bank.name}</span>
+                  <strong>{metric.average}%</strong>
+                </div>
+                <div className="dashboard-bar-track" aria-hidden="true">
+                  <span style={{ width: `${metric.average}%` }} className="dashboard-bar" />
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
+        ) : (
+          <EmptyState title={d('noCompare')}>{d('playForActivity')}</EmptyState>
+        )}
+      </section>
+
+      <section className="dashboard-panel">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('plainReading')}</p>
+            <h2>{d('insights')}</h2>
+          </div>
+          <p>{d('readingsOnly')}</p>
+        </div>
+        {activeMetrics.length ? (
+          <div className="dashboard-insights">
+            {activeMetrics.map((metric) => (
+              <article key={metric.bank.domain} className="dashboard-insight">
+                <div className="flex items-center justify-between gap-3">
+                  <h3>{metric.bank.name}</h3>
+                  <StatusPill label={metric.trendLabel} tone={metric.trend === 'up' ? 'good' : metric.trend === 'down' ? 'warn' : 'neutral'} />
+                </div>
+                <p className="mt-2 font-semibold text-ink">{metric.reading.headline}</p>
+                <p className="mt-1 text-sm text-ink-soft">{metric.reading.detail}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title={d('noTrend')}>{d('trendNeedHistory')}</EmptyState>
+        )}
+      </section>
+
+      <section className="dashboard-panel">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('reminderActivity')}</p>
+            <h2>{d('reminders')}</h2>
+          </div>
+          <p>{log.total ? d('events', { count: log.total, suffix: log.total === 1 ? '' : 's' }) : d('noReminder')}</p>
+        </div>
+        {log.total ? (
+          <>
+            <div className="dashboard-reminder-stats">
+              <div><span>{d('completed')}</span><strong>{log.totalDone}</strong></div>
+              <div><span>{d('missed')}</span><strong>{log.totalMissed}</strong></div>
+              <div><span>{d('completion')}</span><strong>{log.completionRate}%</strong></div>
+            </div>
+            <p className="mt-4 text-sm text-ink-soft">{d('completionWarning')}</p>
+          </>
+        ) : (
+          <EmptyState title={d('noReminder')}>{d('noReminderDetail')}</EmptyState>
+        )}
+        {log.rows.length ? (
+          <div className="dashboard-table-wrap mt-5">
+            <table className="dashboard-table">
+              <thead><tr><th>{d('reminder')}</th><th>{d('status')}</th><th>{d('when')}</th></tr></thead>
+              <tbody>
+                {log.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.typeLabel}</td>
+                    <td><StatusPill label={row.status === 'dismissed' ? d('statusCompleted') : d('statusMissed')} tone={row.tone} /></td>
+                    <td>{row.when}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : null}
       </section>
+
+      <section className="dashboard-panel">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('latestRecords')}</p>
+            <h2>{d('recentActivity')}</h2>
+          </div>
+          <p>{d('knownRecords')}</p>
+        </div>
+        {activity.length ? (
+          <ol className="dashboard-timeline">
+          {activity.map((item) => (
+              <li key={item.id}>
+                <span className={`dashboard-timeline-dot ${item.kind === 'reminder' ? 'dashboard-timeline-dot-reminder' : ''}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink">{activityTitle(item, language)}</p>
+                  <p className="text-sm text-ink-soft">{activityDetail(item, language)}</p>
+                </div>
+                <time className="text-sm text-ink-soft">{item.when}</time>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyState title={d('noRecent')} />
+        )}
+      </section>
+
+      <section className="dashboard-panel">
+        <div className="dashboard-section-heading">
+          <div>
+            <p className="dashboard-eyebrow">{d('explore')}</p>
+            <h2>{d('detail')}</h2>
+          </div>
+          <p>{d('dynamic')}</p>
+        </div>
+        <div className="dashboard-domain-grid">
+          {displayMetrics.map((metric) => (
+            <article key={metric.bank.domain} className="dashboard-domain-card">
+              <div className="flex items-start justify-between gap-3">
+                <div><h3>{metric.bank.name}</h3><p className="mt-1 text-sm text-ink-soft">{metric.bank.benefit}</p></div>
+                <StatusPill label={metric.trendLabel} tone={metric.trend === 'up' ? 'good' : metric.trend === 'down' ? 'warn' : 'neutral'} />
+              </div>
+              <dl className="dashboard-domain-stats">
+                <div><dt>{d('latest')}</dt><dd>{scoreWords(metric.latest)}</dd></div>
+                <div><dt>{d('averageLabel')}</dt><dd>{scoreWords(metric.average)}</dd></div>
+                <div><dt>{d('bestRecent')}</dt><dd>{scoreWords(metric.best)}</dd></div>
+                <div><dt>{d('sessionsLabel')}</dt><dd>{metric.sessions}</dd></div>
+              </dl>
+              <p className="mt-4 text-sm text-ink-soft">{d('lastPlayed')}: {metric.lastPlayed || d('notPlayed')}</p>
+              {metric.sessions ? <TrendChart series={metric.series} caption={metric.reading.headline} language={language} height={170} /> : null}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="dashboard-disclaimer">{d('disclaimer')} {language === 'as' ? 'প্ৰতিটো কাৰ্যৰ চাৰ্টত শেহতীয়া' : 'Each activity chart shows up to the last'} {CHART_POINTS} {language === 'as' ? 'টা ছেছন দেখা যায়।' : 'sessions.'}</div>
     </Shell>
   );
 }

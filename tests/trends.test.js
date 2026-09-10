@@ -240,8 +240,8 @@ test('the not-a-diagnosis note says all three things it has to say', () => {
   assert.match(NOT_A_DIAGNOSIS, /doctor/i, 'it points somewhere useful rather than only warning');
 });
 
-test('both game domains have a bank with a name the dashboard can label a chart with', () => {
-  assert.equal(BANKS.length, 2);
+test('every game domain has a bank with a name the dashboard can label a chart with', () => {
+  assert.equal(BANKS.length, DOMAINS.length, 'a domain with no bank could never be charted');
   for (const bank of BANKS) {
     assert.ok(DOMAINS.includes(bank.domain), `${bank.domain} is not a stored domain`);
     assert.ok(bank.name && bank.name.length > 3, 'a chart needs a human name');

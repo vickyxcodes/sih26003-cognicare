@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
 import HomeButton from '../components/HomeButton.jsx';
 import Picture from '../components/Picture.jsx';
+import CardRow from '../components/CardRow.jsx';
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, RetryIcon } from '../components/icons.jsx';
-import { FIRST_BANK, nextBank } from '../data/banks.js';
-import { BANKS } from '../data/banks.js';
+import { BANKS, FIRST_BANK, nextBank, optionWords } from '../data/banks.js';
 import { recordAnswer, recordSession } from '../lib/db.js';
 import { cancelSpeech, speak } from '../lib/voice.js';
+import { useLanguage } from '../components/LanguageContext.jsx';
+import {
+  listWordsLocalized,
+  localizeBank,
+  localizeDone,
+  localizeMiss,
+  localizeQuestion,
+  t,
+  t as translateText,
+} from '../lib/i18n.js';
 import {
   FEEDBACK_MS,
   PHASE,
@@ -20,35 +30,59 @@ import {
 } from '../lib/sessionEngine.js';
 
 /**
- * /play - one game session, in either domain.
+ * /play - one game session, in any domain.
  *
- * The screen only ever asks for one thing at a time, and the study picture, the
+ * The screen only ever asks for one thing at a time, and the study screen, the
  * feedback and the difficulty transition all move on by themselves so the patient
  * never has to find a "next" button. All the rules live in sessionEngine; this
  * file is layout plus timers.
  *
- * Both game domains run through this one screen. A memory-recall question opens on
- * the study picture; a routine-matching question has nothing to memorise, so the
- * engine opens it straight on the cue and its options. Everything after that -
- * the tap, the write, the feedback, the difficulty change, the ending - is shared,
- * and the words that differ per domain (the counter, the closing line, what the
- * tier change explains) come from the bank rather than from this file.
+ * All five game domains run through this one screen. A question that has
+ * something to memorise - one picture, or a small row of words, digits or shapes
+ * - opens on the study screen and then hides it; a routine-matching question has
+ * nothing to memorise, so the engine opens it straight on the cue and its
+ * options. Everything after that - the tap, the write, the feedback, the
+ * difficulty change, the ending - is shared, and the words that differ per domain
+ * (the counter, the closing line, the wrong-answer line, what the tier change
+ * explains) come from the bank rather than from this file.
+ *
+ * Answering is always one tap on one large button, in every domain: there is no
+ * typing, no drawing, no dragging and no two-finger interaction anywhere.
  *
  * Every screen speaks for itself: the study/ask prompts here, and the feedback,
  * tier-change and finished screens each say their own words on mount, all through
  * the one `speak()` helper. Voice is a help, never a requirement - with the sound
  * off, or on a browser with no speech, the game is unchanged.
  */
+
+/** The option a question is actually about - the right answer. */
+const answerOption = (question) => question.options.find((o) => o.id === question.answerId);
+
+const choicesSpeech = (question, language) => {
+  const labels = question.options.map(optionWords).filter(Boolean);
+  return labels.length ? `${t(language, 'play.choicesAre')} ${listWordsLocalized(labels, language)}.` : '';
+};
+
 export default function Play() {
   const location = useLocation();
-  const requestedBank = location.pathname.endsWith('/play/routine') ? BANKS[1] : FIRST_BANK;
+  const navigate = useNavigate();
+  /**
+   * Each bank owns its own route, so a direct link opens that game and this file
+   * still names no domain. Anything unrecognised falls back to the first game
+   * rather than showing an error to a patient.
+   */
+  const requestedBank = BANKS.find((b) => b.path === location.pathname) || FIRST_BANK;
   const [bank, setBank] = useState(requestedBank);
   const [session, setSession] = useState(() => (
-    requestedBank === BANKS[1]
-      ? startSession({ bank: requestedBank })
-      : startSession({ bank: FIRST_BANK })
+    requestedBank === FIRST_BANK
+      ? startSession({ bank: FIRST_BANK })
+      : startSession({ bank: requestedBank })
   ));
   const savedSessionAt = useRef(null);
+  const partialSessionAt = useRef(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const { language, t: translate } = useLanguage();
   /**
    * A reminder can cover this screen at any moment (the overlay lives in the
    * patient shell). While it does, the game holds still: no timer runs, so the
@@ -76,7 +110,8 @@ export default function Play() {
 
   /**
    * Speak the prompt for the two phases this component renders itself. The study
-   * picture is announced when it appears, and the question when the options do;
+   * picture is announced when it appears, and the question plus every available
+   * choice when the options do;
    * the feedback, tier and finished screens speak from their own components below.
    * Keyed on the question id so re-speaking only happens on a real change of screen
    * - and on the reminder clearing, which is a real change of screen: the patient
@@ -84,12 +119,43 @@ export default function Play() {
    */
   useEffect(() => {
     if (!session.question || reminderOnScreen) return;
-    if (session.phase === PHASE.STUDY) speak(session.question.studyPrompt);
-    else if (session.phase === PHASE.ASK) speak(session.question.prompt);
-  }, [session.phase, session.question?.id, reminderOnScreen]);
+    const displayQuestion = localizeQuestion(bank, session.question, language);
+    const englishQuestion = localizeQuestion(bank, session.question, 'en');
+    if (session.phase === PHASE.STUDY) speak(displayQuestion.studyPrompt, englishQuestion.studyPrompt);
+    else if (session.phase === PHASE.ASK) {
+      speak(
+        `${displayQuestion.prompt} ${choicesSpeech(displayQuestion, language)}`,
+        `${englishQuestion.prompt} ${choicesSpeech(englishQuestion, 'en')}`,
+      );
+    }
+  }, [session.phase, session.question?.id, reminderOnScreen, language, bank]);
 
-  /** Leaving the game (home button, or the route unmounting) stops any speech. */
-  useEffect(() => () => cancelSpeech(), []);
+  /**
+   * A patient may leave after one answer rather than finishing all eight. That
+   * is still a useful session report, so save the partial attempt once when the
+   * screen is left. The ref keeps this cleanup attached to the screen lifetime
+   * without capturing an old question or writing a duplicate on every render.
+   */
+  const savePartialSession = () => {
+    const current = sessionRef.current;
+    if (
+      current.phase === PHASE.DONE
+      || current.asked === 0
+      || partialSessionAt.current === current.startedAt
+    ) return;
+    partialSessionAt.current = current.startedAt;
+    const endedAt = Date.now();
+    recordSession({
+      ...sessionSummary({ ...current, endedAt }, endedAt),
+      endReason: 'abandoned',
+    });
+  };
+
+  /** Leaving the game stops speech and preserves an answered partial attempt. */
+  useEffect(() => () => {
+    savePartialSession();
+    cancelSpeech();
+  }, []);
 
   /**
    * The session-level row the caregiver chart plots, written once when the
@@ -126,57 +192,118 @@ export default function Play() {
     setSession(startSession({ bank: next }));
   };
 
+  const skipGame = () => {
+    const next = nextBank(bank);
+    savePartialSession();
+    cancelSpeech();
+    setBank(next);
+    setSession(startSession({ bank: next }));
+    navigate(next.path);
+  };
+
   const { phase, question, lastAnswer } = session;
+  const displayBank = localizeBank(bank, language);
+  const displayQuestion = localizeQuestion(bank, question, language);
+  const displayAnswer = displayQuestion ? answerOption(displayQuestion) : null;
   const questionNumber = Math.min(session.asked + 1, session.maxQuestions);
+  const accuracy = session.asked ? `${Math.round((session.correct / session.asked) * 100)}%` : '—';
+  const streak = session.streakRight
+    ? translate('play.right', { count: session.streakRight })
+    : session.streakWrong
+      ? translate('play.toReset', { count: session.streakWrong })
+      : '—';
 
   return (
     <main className="screen flex min-h-screen flex-col gap-8">
-      <header className="flex items-center justify-between gap-4">
-        <HomeButton onLeave={cancelSpeech} />
+      <header className="play-header flex items-center justify-between gap-4">
+        <HomeButton onLeave={savePartialSession} />
         <p className="text-lg font-semibold text-ink-soft">
           {phase === PHASE.DONE
-            ? 'All done'
-            : `${bank.unitLabel} ${questionNumber} of ${session.maxQuestions}`}
+            ? translate('nav.allDone')
+            : `${displayBank.unitLabel} ${questionNumber} / ${session.maxQuestions}`}
         </p>
+        <button type="button" onClick={skipGame} className="btn-quiet play-skip" aria-label={translate('nav.skipAria')}>
+          {translate('nav.skip')}
+        </button>
       </header>
+
+      <section className="play-overview" aria-label={`${displayBank.name} ${translate('play.progressAndDifficulty')}`}>
+        <div className="play-level card">
+          <div className="flex items-center justify-between gap-3">
+            <p className="play-label">{translate('play.difficulty')}</p>
+            <p className="play-level-number">{translate('play.level', { level: session.tier })}</p>
+          </div>
+          <p className="play-level-help">{displayBank.difficultyGuide[session.tier]}</p>
+          <p className="play-benefit"><strong>{translate('play.helps')}</strong> {displayBank.benefit}</p>
+        </div>
+        <div className="play-stats card" aria-label={translate('play.currentStats')}>
+          <div>
+            <span className="play-label">{translate('play.progress')}</span>
+            <strong>
+              {session.asked}/{session.maxQuestions}
+            </strong>
+          </div>
+          <div>
+            <span className="play-label">{translate('play.accuracy')}</span>
+            <strong>{accuracy}</strong>
+          </div>
+          <div>
+            <span className="play-label">{translate('play.streak')}</span>
+            <strong>{streak}</strong>
+          </div>
+        </div>
+      </section>
 
       {phase === PHASE.STUDY && (
         <section className="flex flex-1 flex-col items-center justify-center gap-6">
-          <p className="text-center text-3xl font-semibold">{question.studyPrompt}</p>
+          <p className="text-center text-3xl font-semibold">{displayQuestion.studyPrompt}</p>
           <div className="card animate-pop-in flex flex-col items-center gap-3 px-10 py-8">
-            <Picture id={question.studyItem} className="h-48 w-48" />
-            <p className="text-3xl font-bold">{question.options.find((o) => o.id === question.answerId).text}</p>
+            {displayQuestion.studyItem ? (
+              <>
+                <Picture id={displayQuestion.studyItem} className="h-48 w-48" />
+                <p className="text-3xl font-bold">{optionWords(displayAnswer)}</p>
+              </>
+            ) : (
+              <CardRow cards={displayQuestion.studyCards} />
+            )}
           </div>
         </section>
       )}
 
       {phase === PHASE.ASK && (
         <section className="flex flex-1 flex-col justify-center gap-8">
-          <h1 className="text-center text-4xl font-bold leading-snug">{question.prompt}</h1>
+          <h1 className="text-center text-4xl font-bold leading-snug">{displayQuestion.prompt}</h1>
           <div className="grid gap-6 sm:grid-cols-2">
-            {question.options.map((opt) => (
+            {displayQuestion.options.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => choose(opt.id)}
-                aria-label={opt.text}
-                className="tap-target min-h-tap-xl flex-col gap-3 border-4 border-primary/30 bg-card px-6 py-8 shadow-card"
+                aria-label={optionWords(opt)}
+                className={`tap-target ${
+                  /* Two choices get the largest button in the app; three or four
+                     step down to 120px so every choice is still on screen at once
+                     without scrolling - well above the 80px floor either way. */
+                  displayQuestion.options.length > 2 ? 'min-h-tap-lg' : 'min-h-tap-xl'
+                } flex-col gap-3 border-4 border-primary/30 bg-card px-6 py-8 shadow-card`}
               >
                 {opt.item ? <Picture id={opt.item} className="h-40 w-40" /> : null}
-                <span className="text-3xl font-bold">{opt.text}</span>
+                {opt.cards ? <CardRow cards={opt.cards} size="option" /> : null}
+                {opt.text ? <span className="text-3xl font-bold">{opt.text}</span> : null}
               </button>
             ))}
           </div>
         </section>
       )}
 
-      {phase === PHASE.FEEDBACK && <Feedback answer={lastAnswer} question={question} />}
+      {phase === PHASE.FEEDBACK && <Feedback answer={lastAnswer} question={question} bank={bank} />}
 
-      {phase === PHASE.TIER && <TierChange change={session.tierChange} detail={bank.tierDetail[session.tierChange.direction]} />}
+      {phase === PHASE.TIER && <TierChange change={session.tierChange} bank={bank} />}
 
       {phase === PHASE.DONE && (
         <Finished
-          line={bank.doneLine(session.correct, session.asked)}
+          line={localizeDone(bank.domain, session.correct, session.asked, language)}
+          fallbackLine={localizeDone(bank.domain, session.correct, session.asked, 'en')}
           onPlayAgain={playAgain}
         />
       )}
@@ -185,17 +312,30 @@ export default function Play() {
 }
 
 /**
- * Feedback is warm either way. A wrong answer shows the right picture again
+ * Feedback is warm either way. A wrong answer shows the right answer again
  * with a kind sentence - there is no red cross, no "wrong", and no score
  * flashing on screen, because being corrected sharply is what makes people stop
  * playing.
+ *
+ * The sentence itself comes from the bank, so it says "It was the Cup", "The
+ * word was Garden" or "The pattern was circle, square" as the game requires,
+ * and the voice reads exactly what is on screen.
  */
-function Feedback({ answer, question }) {
+function Feedback({ answer, question, bank }) {
+  const { language, t: translate } = useLanguage();
   const right = answer.correct;
-  const item = question.options.find((o) => o.id === question.answerId);
+  const displayQuestion = localizeQuestion(bank, question, language);
+  const englishQuestion = localizeQuestion(bank, question, 'en');
+  const item = answerOption(displayQuestion);
+  const englishItem = answerOption(englishQuestion);
+  const missed = localizeMiss(bank.domain, optionWords(item), language);
+  const englishMissed = localizeMiss(bank.domain, optionWords(englishItem), 'en');
   useEffect(() => {
-    speak(right ? "Yes, that's right!" : `It was the ${item.text}. That one is tricky. Well tried.`);
-  }, []);
+    speak(
+      right ? translate('feedback.correct') : `${missed}. ${translate('feedback.tricky')}`,
+      right ? translateText('en', 'feedback.correct') : `${englishMissed}. ${translateText('en', 'feedback.tricky')}`,
+    );
+  }, [right, missed, englishMissed, translate]);
   return (
     <section
       className="flex flex-1 flex-col items-center justify-center gap-6"
@@ -212,10 +352,11 @@ function Feedback({ answer, question }) {
           <RetryIcon className="h-20 w-20 text-warn" />
         )}
         <p className="text-center text-4xl font-bold leading-snug">
-          {right ? "Yes, that's right!" : `It was the ${item.text}`}
+          {right ? translate('feedback.correct') : missed}
         </p>
-        {!right && <Picture id={question.answerId} className="h-36 w-36" />}
-        {!right && <p className="text-center text-2xl text-ink-soft">That one is tricky. Well tried.</p>}
+        {!right && item.item ? <Picture id={item.item} className="h-36 w-36" /> : null}
+        {!right && item.cards ? <CardRow cards={item.cards} /> : null}
+        {!right && <p className="text-center text-2xl text-ink-soft">{translate('feedback.tricky')}</p>}
       </div>
     </section>
   );
@@ -231,11 +372,15 @@ function Feedback({ answer, question }) {
  * the detail line from the bank, so it explains the change in the terms of the
  * game actually being played, and the voice reads exactly what is on screen.
  */
-function TierChange({ change, detail }) {
+function TierChange({ change, bank }) {
+  const { language, t: translate } = useLanguage();
   const easier = change.direction === 'easier';
+  const detail = localizeBank(bank, language).tierDetail[change.direction];
+  const englishDetail = localizeBank(bank, 'en').tierDetail[change.direction];
+  const message = translate(`tier.${change.direction}`);
   useEffect(() => {
-    speak(`${change.message}. ${detail}`);
-  }, []);
+    speak(`${message}. ${detail}`, `${translateText('en', `tier.${change.direction}`)}. ${englishDetail}`);
+  }, [message, detail, englishDetail, translate, change.direction]);
   return (
     <section
       role="status"
@@ -249,7 +394,7 @@ function TierChange({ change, detail }) {
       ) : (
         <ArrowUpIcon className="animate-arrow-up h-28 w-28" />
       )}
-      <p className="text-center text-4xl font-bold leading-snug">{change.message}</p>
+      <p className="text-center text-4xl font-bold leading-snug">{message}</p>
       <p className="text-center text-2xl font-semibold text-white/90">{detail}</p>
     </section>
   );
@@ -260,19 +405,21 @@ function TierChange({ change, detail }) {
  * count is worded by the bank ("remembered" pictures, "matched" routines), and
  * the same words are spoken and shown.
  */
-function Finished({ line, onPlayAgain }) {
+function Finished({ line, fallbackLine, onPlayAgain }) {
+  const { t: translate } = useLanguage();
+  const englishLine = translateText('en', 'done.wellDone');
   useEffect(() => {
-    speak(`Well done. ${line}`);
-  }, []);
+    speak(`${translate('done.wellDone')} ${line}`, `${englishLine} ${fallbackLine}`);
+  }, [line, fallbackLine, translate, englishLine]);
   return (
     <section className="flex flex-1 flex-col items-center justify-center gap-8">
       <div className="card flex flex-col items-center gap-4 px-10 py-10 text-center">
         <CheckIcon className="h-24 w-24 text-good" />
-        <p className="text-4xl font-bold">Well done!</p>
+        <p className="text-4xl font-bold">{translate('done.wellDone')}</p>
         <p className="text-2xl text-ink-soft">{line}</p>
       </div>
       <button type="button" onClick={onPlayAgain} className="btn-primary min-h-tap-lg w-full max-w-md text-3xl">
-        Play again
+        {translate('nav.playAgain')}
       </button>
     </section>
   );

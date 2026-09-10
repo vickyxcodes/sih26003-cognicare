@@ -1,5 +1,5 @@
 /**
- * sync - copies finished sessions and reminder events to Firestore, once each.
+ * sync - copies session reports and reminder events to Firestore, once each.
  *
  * The rules of the sync layer as pure logic over an injected remote - exactly
  * the shape `store.js` uses for its driver. `node --test` drives a fake

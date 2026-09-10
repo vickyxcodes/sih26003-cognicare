@@ -263,7 +263,8 @@ test('the game screen holds the transition and shows the engine wording', () => 
     'the transition is what TIER_MS times out, so the two-second hold is the engine constant'
   );
   assert.match(play, /phase === PHASE\.TIER && <TierChange/);
-  assert.match(play, /\{change\.message\}/, 'the sentence comes from the engine, not a retyped copy');
+  assert.match(play, /change\.direction/, 'the transition still follows the engine direction');
+  assert.match(play, /translate\(`tier\.\$\{change\.direction\}`\)/, 'the transition sentence is localized');
   assert.match(play, /animate-arrow-down/);
   assert.match(play, /animate-arrow-up/);
   assert.match(play, /aria-live="assertive"/, 'a screen reader must announce the change too');
@@ -401,24 +402,30 @@ test('the same two objects are never offered twice in a row, in either domain', 
 });
 
 /**
- * And the screen itself plays both. Without a browser, reading Play.jsx is the
- * only way to prove the patient can actually reach domain 2 and that no screen
- * describes the wrong game while they are in it.
+ * And the screen itself plays them all. Without a browser, reading Play.jsx is the
+ * only way to prove the patient can actually reach the later domains and that no
+ * screen describes the wrong game while they are in it.
  */
-test('the play screen rotates the two domains and takes its wording from the bank', () => {
+test('the play screen rotates the domains and takes its wording from the bank', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const play = readFileSync(join(here, '..', 'src', 'pages', 'Play.jsx'), 'utf8');
 
-  assert.match(play, /import \{ FIRST_BANK, nextBank \} from '\.\.\/data\/banks\.js'/);
-  assert.match(play, /import \{ BANKS \} from '\.\.\/data\/banks\.js'/);
+  assert.match(play, /import \{[^}]*\bFIRST_BANK\b[^}]*\} from '\.\.\/data\/banks\.js'/);
+  assert.match(play, /import \{[^}]*\bnextBank\b[^}]*\} from '\.\.\/data\/banks\.js'/);
+  assert.match(play, /import \{[^}]*\bBANKS\b[^}]*\} from '\.\.\/data\/banks\.js'/);
   assert.match(play, /startSession\(\{ bank: FIRST_BANK \}\)/, 'a visit opens on domain 1');
-  assert.match(play, /play\/routine/, 'the second game has a direct route');
-  assert.match(play, /nextBank\(bank\)/, '"Play again" moves to the other domain');
-  assert.match(play, /bank\.unitLabel/, 'the counter is worded by the bank');
-  assert.match(play, /bank\.doneLine\(/, 'so is the closing count');
-  assert.match(play, /bank\.tierDetail\[/, 'and what the difficulty change explains');
+  assert.match(
+    play,
+    /BANKS\.find\(\(b\) => b\.path === location\.pathname\)/,
+    'every game is reachable by its own route, named by the bank rather than by this screen'
+  );
+  assert.match(play, /nextBank\(bank\)/, '"Play again" moves to the next domain');
+  assert.match(play, /displayBank\.unitLabel/, 'the counter is worded by the localized bank');
+  assert.match(play, /localizeDone\(/, 'so is the closing count');
+  assert.match(play, /localizeBank\(bank, language\)\.tierDetail/, 'and what the difficulty change explains');
+  assert.match(play, /localizeMiss\(/, 'and how a wrong answer is put');
   assert.ok(
-    !/MEMORY_RECALL|ROUTINE_MATCHING/.test(play),
-    'the screen must not name a single domain, or it cannot play the other'
+    !/MEMORY_RECALL|ROUTINE_MATCHING|WORD_RECALL|NUMBER_SEQUENCE|PATTERN_MATCHING/.test(play),
+    'the screen must not name a single domain, or it cannot play the others'
   );
 });

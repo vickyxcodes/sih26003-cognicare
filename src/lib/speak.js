@@ -13,16 +13,38 @@
 
 /**
  * A touch slower than the browser default, so a prompt is easy to follow, and an
- * Indian-English voice hint (the app is English-only; the browser falls back to
- * whatever English voice it has if en-IN is not installed).
+ * Indian-English voice hint. The browser falls back to the closest available
+ * voice if the requested locale is not installed.
  */
 export const DEFAULT_VOICE = { lang: 'en-IN', rate: 0.9, pitch: 1, volume: 1 };
+export const VOICE_LOCALES = { en: 'en-IN', as: 'as-IN' };
+
+const validLanguage = (language) => Object.prototype.hasOwnProperty.call(VOICE_LOCALES, language)
+  ? language
+  : 'en';
+
+function resolveVoice(synth, locale) {
+  if (typeof synth?.getVoices !== 'function') return { voice: null, locale };
+  const voices = synth.getVoices() || [];
+  if (!voices.length) return { voice: null, locale: locale === 'as-IN' ? DEFAULT_VOICE.lang : locale };
+  const exact = voices.find((voice) => String(voice.lang).toLowerCase() === locale.toLowerCase());
+  if (exact) return { voice: exact, locale };
+  const base = locale.split('-')[0].toLowerCase();
+  const closest = voices.find((voice) => {
+    const voiceLocale = String(voice.lang).toLowerCase();
+    return voiceLocale === base || voiceLocale.startsWith(`${base}-`);
+  });
+  if (closest) return { voice: closest, locale };
+  const fallback = voices.find((voice) => String(voice.lang).toLowerCase().startsWith('en-')) || voices[0] || null;
+  return { voice: fallback, locale: fallback?.lang || locale };
+}
 
 export function createSpeaker(options = {}) {
   const {
     synth = null,
     makeUtterance = null,
     voice = DEFAULT_VOICE,
+    language = 'en',
     onError = () => {},
   } = options;
 
@@ -32,13 +54,21 @@ export function createSpeaker(options = {}) {
   const supported = Boolean(synth && makeUtterance);
   let enabled = true;
   let primed = false;
+  let selectedLanguage = validLanguage(language);
 
-  function build(text) {
-    const utterance = makeUtterance(String(text));
-    utterance.lang = voice.lang;
+  function build(text, fallbackText = '') {
+    const requestedLocale = VOICE_LOCALES[selectedLanguage] || voice.lang;
+    const resolved = resolveVoice(synth, requestedLocale);
+    const hasAssameseVoice = resolved.locale.toLowerCase().startsWith('as');
+    const line = selectedLanguage === 'as' && !hasAssameseVoice && fallbackText
+      ? fallbackText
+      : text;
+    const utterance = makeUtterance(String(line));
+    utterance.lang = resolved.locale;
     utterance.rate = voice.rate;
     utterance.pitch = voice.pitch;
     utterance.volume = voice.volume;
+    if (resolved.voice) utterance.voice = resolved.voice;
     return utterance;
   }
 
@@ -57,13 +87,13 @@ export function createSpeaker(options = {}) {
    * at now must win over whatever was said for the one before it - never a backlog
    * of prompts read out after the moment has passed.
    */
-  function speak(text) {
+  function speak(text, fallbackText = '') {
     if (!supported || !enabled) return false;
     const line = String(text ?? '').trim();
     if (!line) return false;
     try {
       synth.cancel();
-      synth.speak(build(line));
+      synth.speak(build(line, String(fallbackText ?? '').trim()));
       return true;
     } catch (error) {
       onError(error);
@@ -101,6 +131,11 @@ export function createSpeaker(options = {}) {
     isSupported: () => supported,
     isEnabled: () => enabled,
     isPrimed: () => primed,
+    setLanguage: (next) => {
+      selectedLanguage = validLanguage(next);
+      cancel();
+      return selectedLanguage;
+    },
     setEnabled: (value) => {
       enabled = Boolean(value);
       if (!enabled) cancel();

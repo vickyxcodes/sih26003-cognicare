@@ -20,6 +20,7 @@ import {
   makeSeededRand,
   seedDemoHistory,
   startOfDay,
+  DEMO_DOMAINS,
   STEADY_DOMAIN,
 } from '../src/lib/demoData.js';
 import {
@@ -42,6 +43,14 @@ import {
 } from '../src/lib/trends.js';
 import { buildReminderLog, loadCaregiverData } from '../src/lib/caregiverData.js';
 import { BANKS } from '../src/data/banks.js';
+
+/**
+ * The demo tells a two-domain story on purpose - one game declining, one steady -
+ * so these assertions are about the domains it seeds, not about every domain the
+ * app can play. A domain the demo leaves alone shows as "not played yet" on the
+ * dashboard, which is exactly what it is.
+ */
+const DEMO_BANKS = BANKS.filter((bank) => DEMO_DOMAINS.includes(bank.domain));
 
 /**
  * The seeder is pure logic over an injected store and an injected clock, so these
@@ -178,11 +187,14 @@ test('the demo passes the same privacy guard as real play, and adds no new field
 
 /* --------------------------------------------------- both domains, spread ---- */
 
-test('both domains are present, and they are the two the app plays', async () => {
+test('both seeded domains are present, and they are the two the demo tells a story about', async () => {
   const { store } = await seeded();
   const domains = [...new Set((await store.sessions()).map((s) => s.domain))].sort();
-  assert.deepEqual(domains, [...DOMAINS].sort());
-  assert.deepEqual(domains, BANKS.map((b) => b.domain).sort(), 'the dashboard draws exactly these');
+  assert.deepEqual(domains, [...DEMO_DOMAINS].sort());
+  assert.deepEqual(domains, DEMO_BANKS.map((b) => b.domain).sort(), 'the dashboard draws exactly these');
+  for (const domain of domains) {
+    assert.ok(DOMAINS.includes(domain), `${domain} is not a domain the store accepts`);
+  }
 });
 
 test('timestamps span several distinct past days and none is in the future', async () => {
@@ -201,7 +213,7 @@ test('timestamps span several distinct past days and none is in the future', asy
     oldest <= dayStart - (DEMO_DAYS - 1) * DAY_MS,
     'the history really does reach back to the documented window'
   );
-  for (const domain of DOMAINS) {
+  for (const domain of DEMO_DOMAINS) {
     const perDomain = new Set(sessionsOf(rows, domain).map((r) => Math.floor(r.timestamp / DAY_MS)));
     assert.ok(perDomain.size >= 7, `${domain} needs history on several days, got ${perDomain.size}`);
   }
@@ -282,13 +294,13 @@ test('the two domains together produce exactly one alert, via declineAlerts', as
   const sessions = await store.sessions();
   /* The same shape CaregiverDashboard.jsx passes: one entry per chart, each with
    * the series and the label the chart is titled with. */
-  const readings = BANKS.map((bank) => ({
+  const readings = DEMO_BANKS.map((bank) => ({
     series: buildSeries(sessions, bank.domain, { now: NOW }),
     label: bank.name,
   }));
   const alerts = declineAlerts(readings);
   assert.equal(alerts.any, true);
-  assert.equal(alerts.all.length, 2, 'both domains are judged, independently');
+  assert.equal(alerts.all.length, 2, 'both seeded domains are judged, independently');
   assert.equal(alerts.alerts.length, 1, 'one domain declines, the other does not');
   assert.equal(alerts.alerts[0].alert, true);
   assert.equal(alerts.alerts[0].domain, DECLINING_DOMAIN);
@@ -298,10 +310,10 @@ test('the two domains together produce exactly one alert, via declineAlerts', as
   );
 });
 
-test('the chart has enough points to be worth showing, in both domains', async () => {
+test('the chart has enough points to be worth showing, in both seeded domains', async () => {
   const { store } = await seeded();
   const sessions = await store.sessions();
-  for (const domain of DOMAINS) {
+  for (const domain of DEMO_DOMAINS) {
     const series = buildSeries(sessions, domain, { now: NOW });
     assert.ok(series.count >= 8, `${domain} should plot at least 8 points, got ${series.count}`);
     assert.ok(series.labels.every((l) => typeof l === 'string' && l.length > 0));
@@ -479,7 +491,7 @@ test('the caregiver dashboard loader shows the seeded history for this device', 
   assert.ok(data.sessions.length >= 15, `the dashboard received ${data.sessions.length} sessions`);
   assert.ok(data.reminderEvents.length >= 10);
 
-  const readings = BANKS.map((bank) => {
+  const readings = DEMO_BANKS.map((bank) => {
     const series = buildSeries(data.sessions, bank.domain, { now: NOW });
     return { bank, series, decline: describeDecline(series, { label: bank.name }) };
   });

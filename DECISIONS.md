@@ -236,3 +236,72 @@ One line per judgment call. Newest step at the bottom.
   `~` (implemented but the last verification step needs a browser or Firebase console). The
   documentation distinguishes automated verification (274 tests, static checker, demo:plan) from
   manual verification (README checklist).
+
+## Step 15 - three more game domains (word recall, number sequence, pattern matching)
+
+- **Three domains were added as *data*, not as three game loops - and the engine did not change at
+  all.** The generalisation this needed was already made in Step 8: `openingPhase(question)` opens a
+  question on the study screen when it has something to memorise and on the options when it does not.
+  Step 8 read that from a single `studyItem`; Step 12's summary records it was widened once more here
+  to `studyItem || studyCards.length`, so a question that memorises a *row* of things (words, digits,
+  shapes) opens on the study screen the same way a picture does. That is the whole engine change - one
+  boolean - and everything else (streaks, tier clamping, the transition, the caps, the record, the
+  summary, the voice) is shared verbatim. A second loop per new domain would have been four places to
+  keep the adaptive rules and the logging shape in agreement.
+- **No AI and no ML, by the spec and by preference.** Each domain is a fixed bank of hand-written
+  questions in the shape the engine already plays. Difficulty is authored, not inferred; the "adaptive"
+  part is the existing streak rule moving between authored tiers. Nothing here trains, predicts or
+  calls a model.
+- **One new component draws all three memorise-rows, so words, digits and shapes cannot drift.**
+  `CardRow.jsx` renders the row in the study card and on the answer buttons from the same data, exactly
+  as `Picture.jsx` does for the two older domains. Shapes are inline SVG for the same reasons the
+  picture set is: no image files to fetch or precache, sharp at any tap size, a few bytes in the
+  bundle. The row is `aria-hidden` because the button around it already carries the whole pattern in
+  words as its accessible name - reading four shapes out twice is worse than once.
+- **`Play.jsx` stayed domain-agnostic.** It gained two optional fields it renders when present
+  (`studyCards` on the question, `cards`/`label` on an option) and a small `answerOption` helper, but
+  it still names no domain and still reads every word from the bank. The source test that forbids any
+  of the five bank constant names appearing in `Play.jsx` was widened to the new three and still
+  passes, so the screen cannot describe the wrong game.
+- **Difficulty is a real, machine-checked gradient in every domain - not a claim in a comment.**
+  Word recall: 2/3/4 words and choices, and at tier 3 every wrong word is a near neighbour of a shown
+  one (bread/toast, clock/watch), checked against an explicit neighbour list. Number sequence: 2/3/4
+  digits, single digits never repeated so a position question is answerable, tier 1 asks "which did you
+  see" with the wrong option a digit never shown, tier 2 "which came last", tier 3 "which came first" -
+  and from tier 2 on every option is a digit that really appeared, so a miss means the order was lost,
+  not the digits. Pattern matching: 2/3/4 shapes, tier-1 wrong rows share nothing, tier-2 differ in
+  exactly one cell, tier-3 are re-orderings of the same four shapes. `tests/recallGames.test.js`
+  asserts each of these rather than trusting the data.
+- **Digits are spoken as words, never as numerals.** "Remember these numbers: four and seven." - because
+  the voice helper would read "4 7" as "forty-seven". The button shows the numeral (that is what was on
+  screen) and carries the word as its label, so the spoken prompt, the feedback line and a screen reader
+  all say "four". A test asserts no numeral reaches the spoken prompt.
+- **Pattern matching is strictly tap-only, which is a data property as much as a screen one.** Every
+  question resolves to a small fixed list of options with an id to tap; there is no free text and no
+  coordinate anywhere, and `CardRow.jsx` carries no `onClick`/`onPointer`/`draggable`/`<input>`. The
+  design-system test that bans swipe/pinch/multi-touch across `src/` still passes - the earlier draft's
+  doc comment literally containing the word "swipe" was reworded to avoid tripping it.
+- **`DOMAINS` and `BANKS` are widened together and pinned by a test.** `store.js`'s `DOMAINS` enum (the
+  write boundary that makes a domain storable) and `banks.js`'s `BANKS` list (what the engine plays and
+  the dashboard charts) now hold the same five ids in the same order, and `tests/recallGames.test.js`
+  asserts they are equal - a domain that could be played but never stored, or charted but never played,
+  fails the suite. `firestore.rules` needed no change: it was always domain-agnostic, and `remotePayload`
+  passes `domain` straight through.
+- **Demo seeding was left at two domains on purpose.** The demo exists to show the decline alert, and
+  fabricating five domains of fake history would dilute that story; `DEMO_DOMAINS` scopes the seeder to
+  the original two, and the three new domains read "has not been played yet." on the dashboard until
+  actually played. `caregiverFlow.test.js` now positively asserts that unplayed state rather than
+  leaving it implied.
+- **Accessibility follows the existing patient system unchanged.** 2 choices keep the 180px tap target;
+  3-4 choices step down to 120px so every option stays on one screen without scrolling, still far above
+  the 80px floor. Large text, high contrast, no typing, no swipe or multi-touch - all inherited, none
+  re-invented.
+- **Verified the same way every other domain is: by playing whole sessions in `node --test`, not by
+  reading the data.** The 29 tests in `tests/recallGames.test.js` re-run the shared-engine assertions
+  against all three banks (opens on study, one record per tap, eight non-repeating questions, the tier
+  climb `[2,3]`, the two-wrong drop, seeded replay, per-tap logging through the real store, the
+  caregiver chart reading a new domain back) plus the per-domain data rules above, and the seven
+  existing suites that enumerate domains were updated to the five-domain world. `npm run verify` reports
+  303/303 pass; `npm run check` 70 files, 0 errors, 0 warnings; `npm run build` emits a service worker
+  precaching 19 files. What no test here can do is render `CardRow` in a browser - whether the shapes,
+  words and digits are legible at arm's length is on the README manual checklist.

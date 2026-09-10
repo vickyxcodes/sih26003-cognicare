@@ -2,10 +2,11 @@
 
 Updated after every numbered build step.
 
-**Last completed step: 14 - end-to-end simulation and static checks: the full test suite
-was exercised against the completed Step 13 implementation, all 274 tests pass, the static
-checker reports 64 files with 0 errors and 0 warnings, and the demo-plan preview script
-confirms the seeded history matches the documented scores and timeline.**
+**Last completed step: 15 - three more game domains (`word_recall`, `number_sequence`,
+`pattern_matching`) added on the existing engine, screen, storage and adaptive difficulty. No
+new game loop and no AI/ML: each is a bank of questions in the domain-agnostic shape the engine
+already plays. The full suite is 303 tests, 303 pass; the static checker reports 70 files with 0
+errors and 0 warnings; `npm run build` emits a valid service worker precaching 19 files.**
 
 ## Working and verified
 
@@ -124,6 +125,44 @@ confirms the seeded history matches the documented scores and timeline.**
     (hot tea → cup vs something cold → glass), and two such questions in a row showed the same
     two pictures twice with the answer swapped. Question selection now skips the previous pair
     when anything else is available, in both domains.
+- Three more domains - word recall, number sequence, pattern matching (Step 15) - run on the
+  *same* engine, screen, storage and adaptive difficulty, with no new game loop and no AI/ML:
+  - Each is a bank of questions in `src/data/{wordRecall,numberSequence,patternMatching}.js` in
+    the shape the engine already plays. The only engine change was made back in Step 12: a
+    question opens on the study screen when it has *either* a `studyItem` (a picture, memory
+    recall) *or* a `studyCards` row (a small set of words / digits / shapes). Those three files
+    add data, not logic.
+  - The one new screen piece is `src/components/CardRow.jsx`, which draws the memorise-row of
+    words, digits or shapes in the study card and on the answer buttons. Shapes are inline SVG,
+    like the picture set - no image files to fetch or precache. `src/pages/Play.jsx` renders it
+    from optional `studyCards` / `option.cards` fields, so the screen still names no domain and
+    still reads all its wording from the bank.
+  - **Word recall** (`word_recall`, `/play/words`): a short list of ordinary words is shown then
+    hidden, and the patient taps the one they saw. Tier 1: 2 words / 2 choices, wrong word
+    unrelated. Tier 2: 3 / 3. Tier 3: 4 / 4, and every wrong word is a near neighbour of one that
+    *was* shown (bread/toast, clock/watch) - machine-checked - so recognising the gist is not
+    enough. 24 rounds, 8 per tier.
+  - **Number sequence** (`number_sequence`, `/play/numbers`): a run of single digits is shown then
+    hidden, and one plain question is asked. Tier 1: 2 digits, "which did you just see?", the wrong
+    option a digit never shown. Tier 2: 3 digits, "which came last?". Tier 3: 4 digits, "which came
+    first?" - and from tier 2 on every option is a digit that really appeared, so a miss means the
+    order was lost, not the digits. Digits are spoken as words ("four"), never as numerals, so the
+    voice never reads "4 7" as forty-seven. 24 rounds, 8 per tier.
+  - **Pattern matching** (`pattern_matching`, `/play/patterns`): a short row of coloured shapes is
+    shown then hidden, and the patient taps the matching row - strictly tap-only, no drawing, drag,
+    swipe or multi-touch. Tier 1: 2 shapes / 2 choices, the wrong row shares nothing. Tier 2: 3 / 3,
+    each wrong row differs in exactly one place. Tier 3: 4 / 4, every row a re-ordering of the same
+    four shapes so the pattern must be held as a sequence. Each shape has its own outline *and* its
+    own colour, so neither cue is required. 24 rounds, 8 per tier.
+  - Because it is the same engine, adaptive difficulty (2 wrong ease off, 3 right step up), the
+    2-second transition, the voice on every screen and the immediate per-tap IndexedDB write all
+    apply unchanged - each re-asserted against all three domains by `tests/recallGames.test.js`
+    rather than assumed. `DOMAINS` in `store.js` and `BANKS` in `banks.js` are widened together and
+    a test fails if they drift; `firestore.rules` was already domain-agnostic and did not change.
+  - A visit still has exactly one button: "Play again" rotates through all five domains
+    (`nextBank`), and each new game also has its own route in `App.jsx` and the static checker's
+    allow-list. The three new domains show as "has not been played yet." on the caregiver dashboard
+    until they are played (demo seeding still covers only the original two domains).
 - Reminders (medicine, hydration, appointment) run on the device, with no server and no push:
   - `src/data/reminders.js` is the whole schedule as data - seven slots across the day, each
     `{id, type, at: 'HH:MM'}` with an optional `days` list for weekly ones (the appointment
@@ -311,6 +350,19 @@ confirms the seeded history matches the documented scores and timeline.**
     `idb` confined to `idbDriver.js`, caregiver routes outside the patient shell, the dashboard
     deriving its view through exactly the functions the simulation uses, `NOT_A_DIAGNOSIS` rendered,
     and `firestore.rules` carrying the required auth conditions.
+- Verification run for Step 15 (the three new domains): `npm run verify` - **303/303 pass, 0 fail**;
+  `npm run check` - **70 files scanned, 0 errors, 0 warnings**; `npm run build` - service worker
+  precaches 19 files, postbuild OK. The 29 new tests in `tests/recallGames.test.js` cover, for all
+  three domains: 6+ questions per tier, exactly one correct answer among 2-4 valid choices, the
+  study-then-hide shape, a real difficulty gradient (more to hold and more choices as the tier
+  rises, study time never below the 2s floor), the per-domain data rules (word tier-3 near
+  neighbours, number tier-2 last / tier-3 first and single-digit no-repeat, pattern tier-2
+  one-cell-difference / tier-3 permutations, shape colour-and-outline redundancy), correct and
+  incorrect answer handling, a full session through the shared loop, adaptive difficulty both ways,
+  all three tiers played end to end, per-tap logging through the real record store, the caregiver
+  chart reading a new domain back, the five-domain rotation, and every new route being registered
+  and allowed. The seven existing suites that enumerate domains were updated to the five-domain
+  world (BANKS/DOMAINS agreement, rotation order, demo scoped to the original two).
 
 ## Half-built
 
@@ -389,12 +441,21 @@ confirms the seeded history matches the documented scores and timeline.**
 - Which domain a visit starts on is not remembered between app launches: every visit opens on
   memory recall and "Play again" rotates from there. Persisting it would be a settings read at
   session start, which belongs with the other settings work in a future step.
+- The three new domains (word recall, number sequence, pattern matching) have never been seen in a
+  browser. Every data rule and every engine/storage integration is executed by `node --test`, and
+  `CardRow.jsx` is asserted by reading its source, but whether the shape row is legible at arm's
+  length, whether the words/digits are large enough on the answer buttons, and how the study card
+  reads on a real screen are on the README manual checklist alongside the other browser-only checks.
+- Demo seeding still fabricates history for only the two original domains, so on a freshly-seeded
+  demo the three new domains read "has not been played yet." on the dashboard until they are
+  actually played. Seeding five domains of fake history was deliberately not done - it would dilute
+  the decline-alert story the demo exists to show - so this is intended, not a defect.
 
 ## Next step
 
-Real browser and Firebase validation. All 14 build steps are complete and the 274-test suite
-passes. The remaining work is manual: open the app in a browser, run through the README
-"Manual verification checklist" (install prompt, DevTools offline reload, IndexedDB inspection,
-speech, canvas drawing, alert card rendering, Firestore Rules Playground, anonymous sign-in),
-and paste Firebase credentials into `.env` to enable cross-device sync. No new feature development
-is planned.
+Real browser and Firebase validation. All build steps through Step 15 are complete and the
+303-test suite passes. The remaining work is manual: open the app in a browser, run through the
+README "Manual verification checklist" (install prompt, DevTools offline reload, IndexedDB
+inspection, speech, canvas drawing, alert card rendering, the three new games' card rows and shape
+legibility, Firestore Rules Playground, anonymous sign-in), and paste Firebase credentials into
+`.env` to enable cross-device sync. No new feature development is planned.

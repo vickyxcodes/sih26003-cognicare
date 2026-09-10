@@ -120,7 +120,11 @@ the checks that need a real browser — run them before a demo.
 4. Turn on the OS "reduce motion" setting and repeat: the arrow must stop animating and
    the panel must still be readable.
 
-**Both games** (one visit plays each domain once)
+**All five games** (one visit plays each domain once, in turn)
+
+The rotation is memory recall → routine matching → word recall → number sequence →
+pattern matching → back to memory recall. Every game is also reachable directly:
+`/play` (memory), `/play/routine`, `/play/words`, `/play/numbers`, `/play/patterns`.
 
 1. Play a full session, then tap **Play again** on the finished screen. The next
    session must be the routine game: a sentence about a moment in the day ("It is time
@@ -134,11 +138,26 @@ the checks that need a real browser — run them before a demo.
 4. Check the longest cue — "You want to send a note to a friend. Which one do you
    need?" — still fits above two 160px picture buttons on the smallest screen you plan
    to demo on, without scrolling.
-5. Tap **Play again** once more: it must return to the memory game, so a patient who
-   keeps playing alternates rather than repeating one domain.
-6. DevTools → Application → IndexedDB → `cognicare` → `answers`: rows from this session
-   must carry `domain: "routine_matching"` and `questionId: "rm-…"`, one row per tap,
-   alongside the earlier `memory_recall` rows.
+5. Tap **Play again** three more times to reach each new game in turn:
+   - **Word recall** (`/play/words`): a small set of words shows briefly ("Remember
+     these words: Cup and Dog."), disappears, then "Which word did you just see?" with
+     2–4 large word buttons. Confirm the words are large and legible, the study card
+     holds long enough to read, and a wrong answer says "The word was …".
+   - **Number sequence** (`/play/numbers`): a short run of digits shows, disappears,
+     then a plain question ("Which number came last?"). Confirm the spoken prompt says
+     the digits as words ("four", "seven"), never "forty-seven", and the buttons show
+     the numerals large.
+   - **Pattern matching** (`/play/patterns`): a row of coloured shapes shows,
+     disappears, then 2–4 candidate rows of shapes. Confirm the shapes are clearly
+     distinct by both outline and colour, each row is legible at arm's length, and the
+     whole game is one tap per choice — no dragging, swiping or two-finger anything.
+6. Tap **Play again** once more from pattern matching: it must return to the memory
+   game, so a patient who keeps playing cycles through all five rather than getting
+   stuck on one.
+7. DevTools → Application → IndexedDB → `cognicare` → `answers`: rows from each new
+   session must carry the right `domain` (`word_recall` / `number_sequence` /
+   `pattern_matching`) and a matching `questionId` (`wr-…` / `ns-…` / `pm-…`), one row
+   per tap, alongside the earlier `memory_recall` and `routine_matching` rows.
 
 **Reminders**
 
@@ -286,10 +305,12 @@ the drawing, the typing and the real database.
    it must redirect straight to the dashboard. Application → IndexedDB → `cognicare` →
    `settings` must show one new row, `caregiverCode`, and the device's own `pairingCode` must
    be **unchanged**.
-3. **Two charts actually draw.** Both trend charts must render a teal score line (0–100% axis,
+3. **The charts actually draw.** There is one chart per game domain — five of them, in the
+   rotation order — and each played one must render a teal score line (0–100% axis,
    always the full range) and a dashed orange stepped difficulty line on a right-hand 1–3
    axis. Hover a point: the tooltip title must be the full date and time of that session and
-   the two lines must read "N% of answers correct" and "Difficulty level N of 3".
+   the two lines must read "N% of answers correct" and "Difficulty level N of 3". A domain
+   that has not been played yet must show its empty state rather than a flat line at zero.
 4. **Chart cleanup.** With DevTools open, navigate dashboard → patient home → dashboard several
    times, then use **Change code** and pair again. No Chart.js "Canvas is already in use"
    error may appear in the console, and the charts must redraw every time.
@@ -318,7 +339,7 @@ the drawing, the typing and the real database.
     document counts must not change, and IndexedDB `sessions` / `reminderEvents` /
     `answers` row counts must be identical before and after. The dashboard writes nothing but
     the `caregiverCode` setting.
-11. **Patient side untouched.** Home, `/play`, both games, the voice and the reminders must
+11. **Patient side untouched.** Home, `/play`, all five games, the voice and the reminders must
     behave exactly as before, and no reminder card may ever appear over a caregiver screen.
 12. **Rules unchanged.** Re-run check 1 of the Firestore section above: an **unauthenticated**
     `get` on `sessions/abc` must still be **denied**. Caregiver access needed no rules change,
@@ -335,16 +356,16 @@ mutations. What needs a browser is how the card reads.
    "all clear" panel.
 2. **It appears when it should.** Play three sessions of one game, deliberately doing worse each
    time (a drop of at least 5 points overall). Reload the dashboard: a card outlined in orange
-   must appear **above both charts**, headed exactly *"Consider a check-in with a doctor"*.
+   must appear **above the charts**, headed exactly *"Consider a check-in with a doctor"*.
 3. **It says it is not a diagnosis, without scrolling.** In the same card, without scrolling on a
    phone-sized window, the words *"This is not a diagnosis."* must be visible, along with the
    innocent explanations (tiredness, a noisy room, an interruption, unlucky questions).
 4. **It names the right game.** The sentence must name the game as the patient sees it
    ("Remember the picture has gone down in each of the last 3 sessions…"), and the chart for that
    game must carry the small orange line "This is the game the note at the top of the page is
-   about." The other chart must not.
-5. **One domain only.** With one game declining and the other steady or improving, the card must
-   mention **only** the declining one, and the other chart's reading must still say steady or
+   about." No other chart may carry that line.
+5. **One domain only.** With one game declining and the others steady or improving, the card must
+   mention **only** the declining one, and every other chart's reading must still say steady or
    improving.
 6. **Recovery clears it.** Play one clearly better session of that game and reload. The card must
    be **gone** — the alert is about now, not about the history.
@@ -353,5 +374,5 @@ mutations. What needs a browser is how the card reads.
    condition.
 8. **Screen reader.** With a screen reader on, refreshing the dashboard must announce the card
    politely, not interrupt mid-sentence.
-9. **Nothing else changed.** Both charts, their readings, the reminder log, "Last synced" and the
+9. **Nothing else changed.** The charts, their readings, the reminder log, "Last synced" and the
    patient side must behave exactly as they did after Step 11.

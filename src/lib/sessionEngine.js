@@ -8,7 +8,10 @@
  *
  * A question is domain-agnostic:
  *   { id, tier, studyItem|null, studyMs, studyPrompt, prompt, options[], answerId }
- * An option is { id, item|null, text }.
+ * plus an optional `studyCards[]` for the domains that memorise a small row of
+ * words, digits or shapes rather than one picture.
+ * An option is { id, item|null, text }, optionally with `cards[]` (a drawn row)
+ * and `label` (what to call it when the button carries no words).
  */
 export const PHASE = {
   STUDY: 'study',
@@ -89,14 +92,17 @@ function pickQuestion(bank, tier, usedIds, rand, lastPair = null) {
 /**
  * Which screen a question opens on, decided by the question itself.
  *
- * `memory_recall` shows a picture to memorise and then hides it, so it opens on
- * the study screen. `routine_matching` has nothing to memorise - its cue has to
- * stay on screen beside the options - so a question with no `studyItem` opens
- * straight on the ask. Reading it off the question is what lets both domains
- * share this one loop instead of one of them needing a second engine.
+ * `memory_recall` shows a picture to memorise and then hides it; `word_recall`,
+ * `number_sequence` and `pattern_matching` show a small row of things to
+ * memorise and then hide that. Both open on the study screen.
+ * `routine_matching` has nothing to memorise - its cue has to stay on screen
+ * beside the options - so a question with neither a `studyItem` nor any
+ * `studyCards` opens straight on the ask. Reading it off the question is what
+ * lets every domain share this one loop instead of each needing its own engine.
  */
 function openingPhase(question) {
-  return question.studyItem ? PHASE.STUDY : PHASE.ASK;
+  const study = question.studyItem || (question.studyCards && question.studyCards.length);
+  return study ? PHASE.STUDY : PHASE.ASK;
 }
 
 export function startSession({

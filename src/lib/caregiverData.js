@@ -282,6 +282,8 @@ export function buildReminderLog(events, { limit = LOG_LIMIT, now = Date.now(), 
 
   const done = rows.filter((row) => row.status === 'dismissed').length;
   const missed = rows.length - done;
+  const totalDone = usable.filter((row) => row.status === 'dismissed').length;
+  const totalMissed = usable.length - totalDone;
   let summary;
   if (rows.length === 0) {
     summary = 'No reminders have been recorded yet.';
@@ -296,7 +298,17 @@ export function buildReminderLog(events, { limit = LOG_LIMIT, now = Date.now(), 
       + `${missed} went unanswered.`;
   }
 
-  return { rows, shown: rows.length, total: usable.length, done, missed, summary };
+  return {
+    rows,
+    shown: rows.length,
+    total: usable.length,
+    done,
+    missed,
+    totalDone,
+    totalMissed,
+    completionRate: usable.length ? Math.round((totalDone / usable.length) * 100) : null,
+    summary,
+  };
 }
 
 /**

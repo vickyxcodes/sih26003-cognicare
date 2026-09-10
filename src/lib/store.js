@@ -11,7 +11,7 @@
  *                  detailed record the spec asks to write immediately, and
  *                  keeping it on the device means Firestore only ever holds a
  *                  session-level score.
- *   sessions       one row per finished session -> synced to Firestore.
+ *   sessions       one row per completed or abandoned session report -> synced to Firestore.
  *   reminderEvents one row per reminder dismissed or missed -> synced.
  *   settings       key/value: pairing code, device id, last sync time.
  */
@@ -25,8 +25,16 @@ export const STORES = {
 };
 
 /** Values fixed by the Firestore schema in the spec. A typo here would quietly
- * split a caregiver chart in two, so they are checked at the write boundary. */
-export const DOMAINS = ['memory_recall', 'routine_matching'];
+ * split a caregiver chart in two, so they are checked at the write boundary.
+ * This list must stay in step with `BANKS` in `src/data/banks.js` - a bank whose
+ * domain is missing here could be played but never stored. A test asserts it. */
+export const DOMAINS = [
+  'memory_recall',
+  'routine_matching',
+  'word_recall',
+  'number_sequence',
+  'pattern_matching',
+];
 export const REMINDER_TYPES = ['medicine', 'hydration', 'appointment'];
 export const REMINDER_STATUSES = ['dismissed', 'missed'];
 
@@ -122,7 +130,7 @@ export function createRecordStore(driver, { now = Date.now } = {}) {
       });
     },
 
-    /** One finished session: this is the row the caregiver chart plots. */
+    /** One completed or abandoned session report: this is the row the caregiver chart plots. */
     async saveSession(summary) {
       if (!summary) throw new Error('saveSession needs a summary');
       const score = Number(summary.score);

@@ -4,7 +4,7 @@
  * Picks a driver once (IndexedDB, falling back to memory if the browser will not
  * give us one) and wraps the write helpers so a storage failure can never
  * interrupt a game. Logging is important; it is not more important than the
- * patient finishing their session, so every write here is fire-and-forget with
+ * patient answering or leaving their session, so every write here is fire-and-forget with
  * the error reported to the console and swallowed.
  *
  * UI code imports only this file. Anything that needs to read history

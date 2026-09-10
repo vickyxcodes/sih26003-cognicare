@@ -137,11 +137,22 @@ test('routine difficulty is real: only tier 3 pairs objects of the same kind', (
 
 /* ------------------------------------------------- the two-domain rotation */
 
-test('a visit plays both domains, memory recall first', () => {
-  assert.deepEqual(BANKS.map((b) => b.domain), ['memory_recall', 'routine_matching']);
+test('a visit plays every domain in turn, memory recall first', () => {
+  assert.deepEqual(BANKS.map((b) => b.domain), [
+    'memory_recall',
+    'routine_matching',
+    'word_recall',
+    'number_sequence',
+    'pattern_matching',
+  ]);
   assert.equal(FIRST_BANK.domain, 'memory_recall');
   assert.equal(nextBank(MEMORY_RECALL).domain, 'routine_matching');
-  assert.equal(nextBank(ROUTINE_MATCHING).domain, 'memory_recall', 'the rotation comes back round');
+  assert.equal(nextBank(ROUTINE_MATCHING).domain, 'word_recall');
+  assert.equal(
+    nextBank(BANKS[BANKS.length - 1]).domain,
+    FIRST_BANK.domain,
+    'the rotation comes back round'
+  );
   assert.equal(nextBank(null).domain, FIRST_BANK.domain, 'an unknown bank falls back, never crashes');
 });
 

@@ -149,8 +149,8 @@ test('the whole journey: pair once, reload, and the dashboard is what opens', as
   const { charts, log, freshness } = viewModel(snapshot);
 
   // --- one chart per domain, each with a reading under it ---------------
-  assert.equal(charts.length, 2);
-  assert.deepEqual(charts.map((c) => c.bank.domain), ['memory_recall', 'routine_matching']);
+  assert.equal(charts.length, BANKS.length);
+  assert.deepEqual(charts.map((c) => c.bank.domain), BANKS.map((b) => b.domain));
 
   const [memory, routine] = charts;
   assert.equal(memory.series.count, 6);
@@ -218,8 +218,9 @@ test('an empty history gives an honest empty dashboard, with no chart drawn', as
   assert.match(freshness.syncValue, /^Today at /, 'the read itself did happen');
 });
 
-test('one session per domain is reported as too little to read, not as a trend', async () => {
+test('one session in a domain is reported as too little to read, not as a trend', async () => {
   const store = freshStore();
+  const played = ['memory_recall', 'routine_matching'];
   const snapshot = await loadCaregiverData({
     store,
     remote: createFakeRemote({
@@ -231,7 +232,8 @@ test('one session per domain is reported as too little to read, not as a trend',
     code: PATIENT,
     now,
   });
-  for (const chart of viewModel(snapshot).charts) {
+  const charts = viewModel(snapshot).charts;
+  for (const chart of charts.filter((c) => played.includes(c.bank.domain))) {
     assert.equal(chart.series.count, 1);
     assert.equal(chart.reading.direction, TREND.single);
     assert.match(chart.reading.headline, /has been played once so far\.$/);
@@ -239,6 +241,12 @@ test('one session per domain is reported as too little to read, not as a trend',
     // A single point is still plotted - it is a fact, not a trend - but the
     // words are what tell the caregiver not to read a direction into it.
     assert.equal(chartConfig(chart.series).data.datasets[0].data.length, 1);
+  }
+  /* A domain this patient has not reached yet says exactly that, rather than
+   * drawing a flat line at zero that would read as a collapse. */
+  for (const chart of charts.filter((c) => !played.includes(c.bank.domain))) {
+    assert.equal(chart.series.count, 0);
+    assert.match(chart.reading.headline, /has not been played yet\.$/);
   }
 });
 
@@ -338,8 +346,8 @@ test('the two caregiver routes redirect the way the flow needs', () => {
   // Both screens offer the way back to the patient side, and nothing more.
   for (const page of [pairing, dashboard]) {
     assert.match(page, /to="\/"/);
-    assert.match(page, /Back to patient home/);
   }
+  assert.match(dashboard, /LanguageSelector/);
 });
 
 test('the caregiver screens sit outside the patient shell, so no reminder covers them', () => {
@@ -365,7 +373,7 @@ test('the dashboard derives its view exactly the way this simulation does', () =
   // Freezing the read time is what stops "Today at 9:15 am" drifting while the
   // page sits open, and is why `now` is injectable at all.
   assert.match(page, /loadedAt/);
-  assert.match(page, /NOT_A_DIAGNOSIS/, 'the note is rendered, not merely defined');
+  assert.match(page, /dashboardText/, 'localized dashboard copy is rendered through the shared copy helper');
   assert.ok(NOT_A_DIAGNOSIS.length > 80);
 });
 

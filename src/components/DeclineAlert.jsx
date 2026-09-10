@@ -1,4 +1,7 @@
 import { ALERT_HEADLINE, ALERT_NOT_A_DIAGNOSIS } from '../lib/trends.js';
+import { BANKS } from '../data/banks.js';
+import { useLanguage } from './LanguageContext.jsx';
+import { dashboardText, localizeBank } from '../lib/i18n.js';
 
 /**
  * DeclineAlert - the one card on the dashboard that asks the caregiver to do
@@ -21,6 +24,8 @@ import { ALERT_HEADLINE, ALERT_NOT_A_DIAGNOSIS } from '../lib/trends.js';
  * and red would say "emergency" to someone reading it on a phone in a hurry.
  */
 export default function DeclineAlert({ alerts }) {
+  const { language } = useLanguage();
+  const d = (key) => dashboardText(language, key);
   const list = Array.isArray(alerts) ? alerts : [];
   if (list.length === 0) return null;
 
@@ -30,21 +35,27 @@ export default function DeclineAlert({ alerts }) {
       aria-live="polite"
       className="mt-5 rounded-xl2 border-4 border-warn bg-warn-light p-6"
     >
-      <h2 className="text-2xl font-bold text-ink">{ALERT_HEADLINE}</h2>
+      <h2 className="text-2xl font-bold text-ink">{language === 'as' ? d('decline') : ALERT_HEADLINE}</h2>
 
       <ul className="mt-4 space-y-3">
         {list.map((alert) => (
           <li key={alert.domain} className="border-t border-warn/25 pt-3 first:border-0 first:pt-0">
-            <p className="text-lg text-ink">{alert.detail}</p>
-            <p className="mt-1 text-ink-soft">{alert.suggestion}</p>
+            <p className="text-lg text-ink">{language === 'as' ? declineDetail(alert) : alert.detail}</p>
+            <p className="mt-1 text-ink-soft">{language === 'as' ? 'এই কথাটো ৰোগীৰ পৰৱৰ্তী সাধাৰণ চিকিৎসা সাক্ষাতত জনাব পাৰে। ডিভাইচত একো সলনি কৰাৰ প্ৰয়োজন নাই।' : alert.suggestion}</p>
           </li>
         ))}
       </ul>
 
       <p className="mt-4 rounded-xl2 bg-card px-5 py-4 text-base text-ink-soft">
-        <strong className="font-semibold text-ink">This is not a diagnosis.</strong>{' '}
-        {ALERT_NOT_A_DIAGNOSIS}
+        <strong className="font-semibold text-ink">{language === 'as' ? d('notDiagnosis') : 'This is not a diagnosis.'}</strong>{' '}
+        {language === 'as' ? 'কম স্ক’ৰ ভাগৰুৱা হোৱা, শব্দ, বাধা বা কেইটামান কঠিন প্ৰশ্নৰ বাবে হ’ব পাৰে। কেৱল চিকিৎসকেহে ইয়াৰ অৰ্থ ক’ব পাৰে।' : ALERT_NOT_A_DIAGNOSIS}
       </p>
     </section>
   );
+}
+
+function declineDetail(alert) {
+  const bank = BANKS.find((candidate) => candidate.domain === alert.domain);
+  const name = bank ? localizeBank(bank, 'as').name : alert.label;
+  return `${name}ৰ শেহতীয়া ${alert.run} টা ছেছনত প্ৰতিবাৰ স্ক’ৰ কমিছে—প্ৰায় ${alert.from}%ৰ পৰা ${alert.to}%লৈ।`;
 }

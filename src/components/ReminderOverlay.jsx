@@ -4,6 +4,8 @@ import { CheckIcon } from './icons.jsx';
 import { REMINDER_SCHEDULE, reminderWords } from '../data/reminders.js';
 import { readReminderEvents, recordReminderEvent } from '../lib/db.js';
 import { speak } from '../lib/voice.js';
+import { useLanguage } from './LanguageContext.jsx';
+import { localizeReminder } from '../lib/i18n.js';
 import {
   CHECK_EVERY_MS,
   dismissReminder,
@@ -29,6 +31,7 @@ import {
  * can hold its timers instead of advancing behind the card.
  */
 export default function ReminderOverlay({ onShowing, schedule = REMINDER_SCHEDULE }) {
+  const { language } = useLanguage();
   // null while today's history is still being read - nothing is announced until
   // then, so a reload cannot re-announce a reminder already dealt with.
   const [events, setEvents] = useState(null);
@@ -81,6 +84,7 @@ export default function ReminderOverlay({ onShowing, schedule = REMINDER_SCHEDUL
     <ReminderCard
       slot={reminder.slot}
       repeated={reminder.repeated}
+      language={language}
       onDone={() => finish(dismissReminder(reminder, Date.now()).event)}
     />
   );
@@ -100,18 +104,20 @@ export default function ReminderOverlay({ onShowing, schedule = REMINDER_SCHEDUL
  * The line is spoken exactly as it is shown, and said once more when the engine
  * says so, through the same `speak()` every other screen uses.
  */
-function ReminderCard({ slot, repeated, onDone }) {
-  const words = reminderWords(slot);
+function ReminderCard({ slot, repeated, onDone, language }) {
+  const { t } = useLanguage();
+  const words = localizeReminder(slot, language) || reminderWords(slot);
+  const fallbackWords = reminderWords(slot);
   useEffect(() => {
-    if (words) speak(words.line);
-  }, [words, repeated]);
+    if (words) speak(words.line, fallbackWords?.line);
+  }, [words, fallbackWords, repeated]);
   if (!words) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Reminder"
+      aria-label={t('reminder.aria')}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-warn-light px-5 py-8"
     >
       <div className="card animate-pop-in flex flex-col items-center gap-6 px-10 py-10">
@@ -123,11 +129,11 @@ function ReminderCard({ slot, repeated, onDone }) {
       <button
         type="button"
         onClick={onDone}
-        aria-label="Done"
+        aria-label={t('reminder.done')}
         className="tap-target animate-soft-pulse min-h-tap-xl w-full max-w-lg flex-col gap-3 bg-primary px-10 text-white shadow-tap"
       >
         <CheckIcon className="h-20 w-20" />
-        <span className="text-4xl font-bold">Done</span>
+        <span className="text-4xl font-bold">{t('reminder.done')}</span>
       </button>
     </div>
   );

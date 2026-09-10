@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { chartConfig } from '../lib/chartSpec.js';
+import { dashboardText } from '../lib/i18n.js';
 
 /**
  * TrendChart - the only file in the app that touches Chart.js.
@@ -28,7 +29,7 @@ import { chartConfig } from '../lib/chartSpec.js';
 
 let chartLib = null;
 
-function loadChart() {
+export function loadChart() {
   if (!chartLib) {
     chartLib = import('chart.js/auto')
       .then((mod) => mod.default || mod.Chart)
@@ -46,7 +47,7 @@ const prefersReducedMotion = () => typeof window !== 'undefined'
 
 const STATE = { loading: 'loading', ready: 'ready', unavailable: 'unavailable' };
 
-export default function TrendChart({ series, caption = '', height = 260 }) {
+export default function TrendChart({ series, caption = '', language = 'en', height = 260 }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [state, setState] = useState(STATE.loading);
@@ -66,7 +67,7 @@ export default function TrendChart({ series, caption = '', height = 260 }) {
         }
         chartRef.current = new Chart(
           canvasRef.current,
-          chartConfig(series, { reducedMotion: prefersReducedMotion() })
+          chartConfig(series, { reducedMotion: prefersReducedMotion(), language })
         );
         setState(STATE.ready);
       })
@@ -82,12 +83,12 @@ export default function TrendChart({ series, caption = '', height = 260 }) {
         chartRef.current = null;
       }
     };
-  }, [series, hasData]);
+  }, [series, hasData, language]);
 
   if (!hasData) {
     return (
       <p className="rounded-xl2 border-2 border-dashed border-ink-soft/25 px-4 py-10 text-center text-ink-soft">
-        Nothing to chart yet.
+        {dashboardText(language, 'noData')}
       </p>
     );
   }
@@ -97,14 +98,14 @@ export default function TrendChart({ series, caption = '', height = 260 }) {
      * a flaky connection gets the sessions as a list rather than a blank box. */
     return (
       <div className="rounded-xl2 border-2 border-dashed border-warn/40 bg-warn-light px-4 py-4">
-        <p className="font-semibold text-ink">The chart could not be drawn on this device.</p>
+        <p className="font-semibold text-ink">{dashboardText(language, 'chartUnavailable')}</p>
         <p className="mt-1 text-ink-soft">
-          The sessions themselves are fine - here they are, oldest first.
+          {dashboardText(language, 'chartFallback')}
         </p>
         <ol className="mt-3 space-y-1 text-ink">
           {points.map((point) => (
             <li key={point.timestamp}>
-              {point.label}: {point.score}% correct, difficulty level {point.tier} of 3
+              {point.label}: {point.score}% {dashboardText(language, 'answers').toLowerCase()}, {dashboardText(language, 'difficultyLevel').toLowerCase()} {point.tier} of 3
             </li>
           ))}
         </ol>
@@ -115,7 +116,7 @@ export default function TrendChart({ series, caption = '', height = 260 }) {
   return (
     <figure className="m-0">
       <div style={{ height: `${height}px` }} className="relative">
-        <canvas ref={canvasRef} role="img" aria-label={caption || 'Session trend chart'} />
+        <canvas ref={canvasRef} role="img" aria-label={caption || dashboardText(language, 'chartTrend')} />
       </div>
       {caption ? <figcaption className="sr-only">{caption}</figcaption> : null}
     </figure>

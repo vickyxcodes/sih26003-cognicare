@@ -64,14 +64,24 @@ const option = (id) => ({ id, item: id, text: itemLabel(id) });
 export const ROUTINE_MATCHING = {
   domain: 'routine_matching',
   name: 'Everyday routines',
+  /** The direct route to this game, and how the play screen recognises it. */
+  path: '/play/routine',
   /** How the counter in the header reads: "Question 3 of 8". */
   unitLabel: 'Question',
+  benefit: 'Practises connecting familiar objects with daily routines.',
+  difficultyGuide: {
+    1: 'The helpful object is easy to tell apart.',
+    2: 'Both choices are familiar everyday objects.',
+    3: 'The choices are close neighbours, so the cue matters more.',
+  },
   /** What the difficulty transition adds, in this domain's own terms. */
   tierDetail: {
     easier: 'The next ones are easier to tell apart.',
     harder: 'The next ones look more alike.',
   },
   doneLine: (correct, asked) => `You matched ${correct} of ${asked} correctly today.`,
+  /** How a wrong answer is put, warmly, in this domain's own terms. */
+  missLine: (words) => `It was the ${words}`,
   questions: CUES.map(([tier, need, wrong, cue], i) => ({
     id: `rm-${i + 1}`,
     tier,
