@@ -94,9 +94,15 @@ export default function PatientHome() {
           <span className="text-xl font-bold">{t('home.patterns')}</span>
           <span className="text-sm font-medium text-ink-soft/75">{t('home.patternsSub')}</span>
         </Link>
+        <Link to="/play/about-me" className="home-game-card tap-target min-h-[180px] flex-col items-start justify-start gap-2 px-5 py-5 text-left">
+          <span className="home-game-kicker">{t('home.activity6')}</span>
+          <span className="text-xl font-bold">{t('home.aboutMe')}</span>
+          <span className="text-sm font-medium text-ink-soft/75">{t('home.aboutMeSub')}</span>
+        </Link>
       </section>
 
       <footer className="home-footer">
+        <Link to="/patient/profile" className="home-caregiver-link min-h-tap">{t('home.editProfile')}</Link>
         <Link to="/caregiver" className="home-caregiver-link min-h-tap">
           {t('home.caregivers')} <span aria-hidden="true">→</span>
         </Link>

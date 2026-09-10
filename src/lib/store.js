@@ -34,7 +34,12 @@ export const DOMAINS = [
   'word_recall',
   'number_sequence',
   'pattern_matching',
+  'about_me',
 ];
+/** Local-only keys. They are intentionally never accepted by setSetting(),
+ * never appear in a sync payload and are not part of the Firestore schema. */
+export const PATIENT_PROFILE_KEY = 'patient-profile';
+export const PATIENT_PROFILE_DRAFT_KEY = 'patient-profile-draft';
 export const REMINDER_TYPES = ['medicine', 'hydration', 'appointment'];
 export const REMINDER_STATUSES = ['dismissed', 'missed'];
 
@@ -110,6 +115,17 @@ export function createRecordStore(driver, { now = Date.now } = {}) {
     out.sort((a, b) => a.timestamp - b.timestamp);
     if (Number.isFinite(limit)) out = out.slice(-limit);
     return out;
+  };
+
+  const localProfile = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const allowed = [
+      'name', 'age', 'gender', 'city', 'pastOccupation', 'favouriteFood', 'favouriteColour',
+      'familyMemberName', 'familyMemberRelation', 'emergencyContactName', 'emergencyContactPhone',
+    ];
+    const profile = {};
+    for (const key of allowed) profile[key] = String(value[key] ?? '').trim().slice(0, key === 'emergencyContactPhone' ? 30 : 80);
+    return profile;
   };
 
   return {
@@ -205,6 +221,36 @@ export function createRecordStore(driver, { now = Date.now } = {}) {
       assertSafeRecord({ [key]: value }, 'settings');
       await driver.put(STORES.settings, { key, value });
       return value;
+    },
+
+    /** Profile data is stored locally only, under fixed keys that the sync layer never reads. */
+    async getPatientProfile() {
+      const row = await driver.get(STORES.settings, PATIENT_PROFILE_KEY);
+      return localProfile(row?.value);
+    },
+
+    async savePatientProfile(profile) {
+      const value = localProfile(profile);
+      if (!value) throw new Error('patient profile must be an object');
+      const saved = { ...value, updatedAt: now() };
+      await driver.put(STORES.settings, { key: PATIENT_PROFILE_KEY, value: saved });
+      return saved;
+    },
+
+    async getPatientProfileDraft() {
+      const row = await driver.get(STORES.settings, PATIENT_PROFILE_DRAFT_KEY);
+      return localProfile(row?.value);
+    },
+
+    async savePatientProfileDraft(profile) {
+      const value = localProfile(profile);
+      if (!value) throw new Error('patient profile draft must be an object');
+      await driver.put(STORES.settings, { key: PATIENT_PROFILE_DRAFT_KEY, value });
+      return value;
+    },
+
+    async clearPatientProfileDraft() {
+      await driver.delete(STORES.settings, PATIENT_PROFILE_DRAFT_KEY);
     },
 
     /**

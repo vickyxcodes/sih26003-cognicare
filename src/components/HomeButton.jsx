@@ -17,7 +17,7 @@ export default function HomeButton({ onLeave, label }) {
       className="tap-target bg-white text-ink border-4 border-ink/15 px-6 gap-3 text-xl"
       onClick={() => {
         if (onLeave) onLeave();
-        navigate('/');
+        navigate('/patient');
       }}
     >
       <HomeIcon className="h-9 w-9 text-primary" />

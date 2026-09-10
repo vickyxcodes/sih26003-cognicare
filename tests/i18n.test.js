@@ -31,7 +31,7 @@ test('the selected language uses the existing local settings store and survives 
 });
 
 test('every game has a localized bank and localized question display data', () => {
-  assert.equal(BANKS.length, 5);
+  assert.equal(BANKS.length, 6);
   for (const bank of BANKS) {
     const displayBank = localizeBank(bank, 'as');
     assert.notEqual(displayBank.name, bank.name, `${bank.domain} name should be localized`);

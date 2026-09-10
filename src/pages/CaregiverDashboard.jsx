@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import TrendChart from '../components/TrendChart.jsx';
 import PerformanceChart from '../components/PerformanceChart.jsx';
 import DeclineAlert from '../components/DeclineAlert.jsx';
@@ -8,6 +8,8 @@ import { BANKS } from '../data/banks.js';
 import LanguageSelector from '../components/LanguageSelector.jsx';
 import { useLanguage } from '../components/LanguageContext.jsx';
 import { getStore } from '../lib/db.js';
+import { currentCaregiver, signOutCaregiver } from '../lib/auth.js';
+import { isFirebaseConfigured } from '../config/env.js';
 import { createFirestoreRemote } from '../lib/remote.js';
 import {
   LOG_LIMIT,
@@ -64,7 +66,7 @@ function Shell({ children }) {
           <span className="text-lg font-bold text-ink">CogniCare</span>
         </span>
         <Link
-          to="/"
+          to="/patient"
           className="min-h-tap flex items-center px-4 text-base text-ink-soft/70 underline decoration-ink-soft/30"
         >
           {d('backHome')}
@@ -135,6 +137,7 @@ export default function CaregiverDashboard() {
   const d = (key, values) => dashboardText(language, key, values);
   const store = useMemo(() => getStore(), []);
   const remote = useMemo(() => createFirestoreRemote(), []);
+  const navigate = useNavigate();
   const [phase, setPhase] = useState(PHASE.checking);
   const [code, setCode] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
@@ -176,9 +179,16 @@ export default function CaregiverDashboard() {
 
   useEffect(() => {
     let live = true;
-    readStoredCode(store)
-      .then((stored) => {
+    Promise.all([
+      readStoredCode(store),
+      isFirebaseConfigured() ? currentCaregiver() : Promise.resolve(null),
+    ])
+      .then(([stored, caregiver]) => {
         if (!live) return;
+        if (isFirebaseConfigured() && !caregiver) {
+          setPhase(PHASE.unpaired);
+          return;
+        }
         if (!stored) {
           setPhase(PHASE.unpaired);
           return;
@@ -198,6 +208,11 @@ export default function CaregiverDashboard() {
     await forgetCode(store);
     setCode(null);
     setPhase(PHASE.unpaired);
+  }
+
+  async function signOut() {
+    await signOutCaregiver();
+    navigate('/caregiver', { replace: true });
   }
 
   const now = loadedAt || Date.now();
@@ -283,6 +298,7 @@ export default function CaregiverDashboard() {
       <button type="button" className="btn-quiet" onClick={changeCode}>
         {d('changeCode')}
       </button>
+      {isFirebaseConfigured() ? <button type="button" className="btn-quiet" onClick={signOut}>Sign out</button> : null}
     </div>
   );
 

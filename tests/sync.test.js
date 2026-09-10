@@ -545,7 +545,7 @@ test('the security rules still allow nothing but authenticated creates', () => {
     assert.ok(rules.includes(`match /${collection}/`), `${collection} is not in the rules`);
   }
   const creates = [...rules.matchAll(/allow create:\s*if\s+([^;]+);/g)].map((m) => m[1].replace(/\s+/g, ' '));
-  assert.equal(creates.length, SYNCED_STORES.length, 'a create rule was added or removed');
+  assert.equal(creates.length, SYNCED_STORES.length + 1, 'the two synced stores and caregiver link must be protected');
   for (const condition of creates) {
     assert.match(condition, /request\.auth != null/, 'an unauthenticated write would be allowed');
     assert.match(condition, /request\.resource\.data\.pairingCode is string/);

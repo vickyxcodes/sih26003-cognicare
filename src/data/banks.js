@@ -17,6 +17,7 @@ import { ROUTINE_MATCHING } from './routineMatching.js';
 import { WORD_RECALL } from './wordRecall.js';
 import { NUMBER_SEQUENCE } from './numberSequence.js';
 import { PATTERN_MATCHING } from './patternMatching.js';
+import { ABOUT_ME } from './aboutMe.js';
 
 export const BANKS = [
   MEMORY_RECALL,
@@ -24,6 +25,7 @@ export const BANKS = [
   WORD_RECALL,
   NUMBER_SEQUENCE,
   PATTERN_MATCHING,
+  ABOUT_ME,
 ];
 
 /** The game a fresh visit opens with. */

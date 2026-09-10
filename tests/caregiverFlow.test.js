@@ -338,14 +338,15 @@ test('the two caregiver routes redirect the way the flow needs', () => {
   const pairing = readFileSync(join(ROOT, 'src', 'pages', 'CaregiverPairing.jsx'), 'utf8');
   const dashboard = readFileSync(join(ROOT, 'src', 'pages', 'CaregiverDashboard.jsx'), 'utf8');
 
-  // A stored code skips the pairing screen.
-  assert.match(pairing, /if \(stored\) return <Navigate to="\/caregiver\/dashboard" replace \/>;/);
+  // A stored code can be reused only after the caregiver is authenticated.
+  assert.match(pairing, /stored && user/);
+  assert.match(pairing, /remote\.linkPairingCode/);
   assert.match(pairing, /navigate\('\/caregiver\/dashboard', \{ replace: true \}\)/);
   // No stored code cannot reach the dashboard.
   assert.match(dashboard, /<Navigate to="\/caregiver" replace \/>/);
   // Both screens offer the way back to the patient side, and nothing more.
   for (const page of [pairing, dashboard]) {
-    assert.match(page, /to="\/"/);
+    assert.match(page, /to="\/patient"/);
   }
   assert.match(dashboard, /LanguageSelector/);
 });
@@ -353,10 +354,11 @@ test('the two caregiver routes redirect the way the flow needs', () => {
 test('the caregiver screens sit outside the patient shell, so no reminder covers them', () => {
   const app = readFileSync(join(ROOT, 'src', 'App.jsx'), 'utf8');
   const layout = app.slice(app.indexOf('<Route element={<PatientLayout />}'), app.indexOf('</Route>'));
-  assert.match(layout, /path="\/"/);
+  assert.match(app, /path="\/" element=\{<RoleEntry \/>\}/);
   assert.match(layout, /path="\/play"/);
   assert.doesNotMatch(layout, /caregiver/, 'a reminder card must never appear over a caregiver screen');
   assert.match(app, /path="\/caregiver" element=\{<CaregiverPairing \/>\}/);
+  assert.match(app, /path="\/caregiver\/patient" element=\{<CaregiverPatientSetup \/>\}/);
   assert.match(app, /path="\/caregiver\/dashboard" element=\{<CaregiverDashboard \/>\}/);
 });
 

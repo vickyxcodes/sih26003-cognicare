@@ -144,6 +144,7 @@ test('a visit plays every domain in turn, memory recall first', () => {
     'word_recall',
     'number_sequence',
     'pattern_matching',
+    'about_me',
   ]);
   assert.equal(FIRST_BANK.domain, 'memory_recall');
   assert.equal(nextBank(MEMORY_RECALL).domain, 'routine_matching');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import PatientHome from './pages/PatientHome.jsx';
 import Play from './pages/Play.jsx';
@@ -7,6 +7,12 @@ import CaregiverDashboard from './pages/CaregiverDashboard.jsx';
 import LanguageSelector from './components/LanguageSelector.jsx';
 import { LanguageProvider } from './components/LanguageContext.jsx';
 import ReminderOverlay from './components/ReminderOverlay.jsx';
+import PatientProfile from './pages/PatientProfile.jsx';
+import AboutMePlay from './pages/AboutMePlay.jsx';
+import { getStore } from './lib/db.js';
+import RoleChooser from './pages/RoleChooser.jsx';
+import CaregiverPatientSetup from './pages/CaregiverPatientSetup.jsx';
+import { APP_ROLE_SETTING, APP_ROLES } from './lib/appRole.js';
 
 /**
  * Patient-mode shell.
@@ -41,19 +47,49 @@ function PatientLayoutContent() {
   );
 }
 
+/** Patient pages need a completed local profile; caregiver pages remain independent. */
+function RequirePatientProfile() {
+  const store = useMemo(() => getStore(), []);
+  const [profile, setProfile] = useState(undefined);
+  useEffect(() => { store.getPatientProfile().then(setProfile).catch(() => setProfile(null)); }, [store]);
+  if (profile === undefined) return <main className="screen"><p className="text-xl text-ink-soft">Loading…</p></main>;
+  return profile ? <Outlet /> : <Navigate to="/patient/onboarding" replace />;
+}
+
+function RoleEntry() {
+  const store = useMemo(() => getStore(), []);
+  const [destination, setDestination] = useState(null);
+  useEffect(() => {
+    Promise.all([store.getSetting(APP_ROLE_SETTING, null), store.getPatientProfile()]).then(([role, profile]) => {
+      if (role === APP_ROLES.caregiver) setDestination('/caregiver');
+      else if (role === APP_ROLES.patient || profile) setDestination(profile ? '/patient' : '/patient/onboarding');
+      else setDestination('choose');
+    }).catch(() => setDestination('choose'));
+  }, [store]);
+  if (destination === null) return <main className="screen"><p className="text-xl text-ink-soft">Loading…</p></main>;
+  return destination === 'choose' ? <RoleChooser /> : <Navigate to={destination} replace />;
+}
+
 export default function App() {
   return (
     <LanguageProvider>
       <Routes>
+        <Route path="/" element={<RoleEntry />} />
         <Route element={<PatientLayout />}>
-          <Route path="/" element={<PatientHome />} />
-          <Route path="/play" element={<Play />} />
-          <Route path="/play/routine" element={<Play />} />
-          <Route path="/play/words" element={<Play />} />
-          <Route path="/play/numbers" element={<Play />} />
-          <Route path="/play/patterns" element={<Play />} />
+          <Route path="/patient/onboarding" element={<PatientProfile />} />
+          <Route element={<RequirePatientProfile />}>
+            <Route path="/patient" element={<PatientHome />} />
+            <Route path="/patient/profile" element={<PatientProfile edit />} />
+            <Route path="/play" element={<Play />} />
+            <Route path="/play/routine" element={<Play />} />
+            <Route path="/play/words" element={<Play />} />
+            <Route path="/play/numbers" element={<Play />} />
+            <Route path="/play/patterns" element={<Play />} />
+            <Route path="/play/about-me" element={<AboutMePlay />} />
+          </Route>
         </Route>
         <Route path="/caregiver" element={<CaregiverPairing />} />
+        <Route path="/caregiver/patient" element={<CaregiverPatientSetup />} />
         <Route path="/caregiver/dashboard" element={<CaregiverDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

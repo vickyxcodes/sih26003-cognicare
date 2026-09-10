@@ -45,6 +45,7 @@ const COPY = {
       activity5: 'Activity 5',
       patterns: 'Match patterns',
       patternsSub: 'Remember a row of shapes',
+      activity6: 'Activity 6', aboutMe: 'About me', aboutMeSub: 'Remember familiar details', editProfile: 'Edit profile',
       caregivers: 'For caregivers',
       caregiverCode: 'Caregiver code',
       preparing: 'Preparing caregiver code…',
@@ -143,6 +144,12 @@ const COPY = {
         done: 'You matched {correct} of {asked} patterns today.',
         miss: 'The pattern was {answer}',
       },
+      about_me: {
+        name: 'About me', unit: 'Detail', benefit: 'Practises recalling familiar personal details.',
+        difficulty: { 1: 'Choose from two familiar answers.', 2: 'Choose from three familiar answers.', 3: 'Choose from four familiar answers.' },
+        easier: 'The next question has fewer choices.', harder: 'The next question has a few more choices.',
+        done: 'You answered {correct} of {asked} personal questions today.', miss: 'The answer was {answer}',
+      },
     },
   },
   as: {
@@ -155,6 +162,7 @@ const COPY = {
       activity3: 'কাৰ্য ৩', words: 'শব্দ মনত ৰাখক', wordsSub: 'চিনাকি শব্দ মনত ৰাখক',
       activity4: 'কাৰ্য ৪', numbers: 'সংখ্যা মনত ৰাখক', numbersSub: 'এটা সৰু ক্ৰম মনত ৰাখক',
       activity5: 'কাৰ্য ৫', patterns: 'আৰ্হি মিলাওক', patternsSub: 'আকাৰৰ শাৰী মনত ৰাখক',
+      activity6: 'কাৰ্য ৬', aboutMe: 'মোৰ বিষয়ে', aboutMeSub: 'চিনাকি কথা মনত ৰাখক', editProfile: 'প্ৰ’ফাইল সম্পাদনা কৰক',
       caregivers: 'অভিভাৱকৰ বাবে', caregiverCode: 'অভিভাৱকৰ ক’ড', preparing: 'অভিভাৱকৰ ক’ড সাজু হৈ আছে…',
       greeting: 'CogniCare লৈ স্বাগতম। সাজু হ’লে ডাঙৰ বুটামটো টিপি খেলক।',
     },
@@ -177,6 +185,7 @@ const COPY = {
       word_recall: { name: 'শব্দ মনত ৰাখক', unit: 'শব্দ', benefit: 'চিনাকি শব্দ অলপ সময় মনত ৰখাত সহায় কৰে.', difficulty: { 1: 'দুটা শব্দ আৰু দুটা বাছনি মনত ৰাখক।', 2: 'তিনিটা শব্দ মনত ৰাখক আৰু কম সময়ত চাওক।', 3: 'ওচৰ অৰ্থৰ চাৰিটা শব্দ মনত ৰাখক।' }, easier: 'পৰৱৰ্তী শব্দবোৰ বেছি সময় পৰ্দাত থাকিব।', harder: 'পৰৱৰ্তী পৰ্যায়ত বেছি শব্দ সোনকালে দেখা যাব।', done: 'আপুনি আজি {asked} টাৰ ভিতৰত {correct} টা শব্দ মনত ৰাখিলে।', miss: 'শব্দটো আছিল {answer}' },
       number_sequence: { name: 'সংখ্যা মনত ৰাখক', unit: 'সংখ্যা', benefit: 'এটা সৰু সংখ্যা-ক্ৰম আৰু তাৰ স্থান মনত ৰখাত অনুশীলন কৰে.', difficulty: { 1: 'দুটা সংখ্যাৰ এটা সৰু জোৰা চিনাক্ত কৰক।', 2: 'দীঘল ক্ৰমত কোনটো সংখ্যা শেষত আহিছিল মনত ৰাখক।', 3: 'দীঘল ক্ৰমত কোনটো সংখ্যা প্ৰথমে আহিছিল মনত ৰাখক।' }, easier: 'পৰৱৰ্তী ক্ৰম সৰু আৰু বেছি সময় থাকিব।', harder: 'পৰৱৰ্তী ক্ৰম দীঘল আৰু সোনকালে সলনি হ’ব।', done: 'আপুনি আজি {asked} টাৰ ভিতৰত {correct} টা সংখ্যা মনত ৰাখিলে।', miss: 'সংখ্যাটো আছিল {answer}' },
       pattern_matching: { name: 'আৰ্হি মিলাওক', unit: 'আৰ্হি', benefit: 'দৃশ্য ক্ৰম আৰু আৰ্হি চিনাক্ত কৰাত সহায় কৰে.', difficulty: { 1: 'বেলেগ বেলেগ আকাৰৰ সৰু শাৰী মনত ৰাখক।', 2: 'শাৰী দীঘল আৰু মাত্ৰ এটা ঠাইত বেলেগ।', 3: 'একে আকাৰবোৰ স্থান সলনি কৰে, সেয়ে ক্ৰমটো মন কৰক।' }, easier: 'পৰৱৰ্তী আৰ্হিবোৰ সৰু আৰু সহজে পৃথক কৰিব পাৰি।', harder: 'পৰৱৰ্তী আৰ্হিবোৰ দীঘল আৰু বেছি একে যেন লাগিব।', done: 'আপুনি আজি {asked} টাৰ ভিতৰত {correct} টা আৰ্হি মিলালে।', miss: 'আৰ্হিটো আছিল {answer}' },
+      about_me: { name: 'মোৰ বিষয়ে', unit: 'কথা', benefit: 'নিজৰ চিনাকি কথাবোৰ মনত পেলোৱাত অনুশীলন কৰে।', difficulty: { 1: 'দুটা চিনাকি উত্তৰৰ মাজৰ পৰা বাছক।', 2: 'তিনিটা চিনাকি উত্তৰৰ মাজৰ পৰা বাছক।', 3: 'চাৰিটা চিনাকি উত্তৰৰ মাজৰ পৰা বাছক।' }, easier: 'পৰৱৰ্তী প্ৰশ্নত কম বাছনি থাকিব।', harder: 'পৰৱৰ্তী প্ৰশ্নত আৰু কেইটামান বাছনি থাকিব।', done: 'আপুনি আজি {asked} টাৰ ভিতৰত {correct} টা নিজৰ বিষয়ে প্ৰশ্নৰ উত্তৰ দিলে।', miss: 'উত্তৰটো আছিল {answer}' },
     },
   },
 };
@@ -340,7 +349,9 @@ export function localizeQuestion(bank, question, language) {
   const cards = localizeCards(question.studyCards, language);
   let studyPrompt = question.studyPrompt;
   let prompt = question.prompt;
-  if (language === 'as') {
+  if (domain === 'about_me' && question.translations) {
+    prompt = question.translations[language]?.prompt || question.translations.en?.prompt || prompt;
+  } else if (language === 'as') {
     if (domain === 'memory_recall') {
       studyPrompt = `এই ${itemText(question.studyItem, language)} ছবিখন চাওক। মনত ৰাখিবলৈ চেষ্টা কৰক।`;
       prompt = 'আপুনি এতিয়াই কোনখন ছবি দেখিছিল?';

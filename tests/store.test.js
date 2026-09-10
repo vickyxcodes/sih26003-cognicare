@@ -81,7 +81,19 @@ test('the domains stored are exactly the ones the Firestore schema allows', () =
     'word_recall',
     'number_sequence',
     'pattern_matching',
+    'about_me',
   ]);
+});
+
+test('a patient profile and unfinished draft stay local to the fixed profile keys', async () => {
+  const { store } = freshStore();
+  const profile = { name: 'Rina', age: '70', city: 'Guwahati', emergencyContactPhone: '98765 43210' };
+  await store.savePatientProfileDraft(profile);
+  assert.equal((await store.getPatientProfileDraft()).name, 'Rina');
+  await store.savePatientProfile(profile);
+  assert.equal((await store.getPatientProfile()).emergencyContactPhone, '98765 43210');
+  await store.clearPatientProfileDraft();
+  assert.equal(await store.getPatientProfileDraft(), null);
 });
 
 test('personal and medical fields cannot be written, even by accident', async () => {

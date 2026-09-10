@@ -63,7 +63,7 @@ const choicesSpeech = (question, language) => {
   return labels.length ? `${t(language, 'play.choicesAre')} ${listWordsLocalized(labels, language)}.` : '';
 };
 
-export default function Play() {
+export default function Play({ bankOverride = null }) {
   const location = useLocation();
   const navigate = useNavigate();
   /**
@@ -71,7 +71,7 @@ export default function Play() {
    * still names no domain. Anything unrecognised falls back to the first game
    * rather than showing an error to a patient.
    */
-  const requestedBank = BANKS.find((b) => b.path === location.pathname) || FIRST_BANK;
+  const requestedBank = bankOverride || BANKS.find((b) => b.path === location.pathname) || FIRST_BANK;
   const [bank, setBank] = useState(requestedBank);
   const [session, setSession] = useState(() => (
     requestedBank === FIRST_BANK
@@ -188,6 +188,10 @@ export default function Play() {
    */
   const playAgain = () => {
     const next = nextBank(bank);
+    if (next.domain === 'about_me' || bank.domain === 'about_me') {
+      navigate(next.path);
+      return;
+    }
     setBank(next);
     setSession(startSession({ bank: next }));
   };
@@ -196,6 +200,10 @@ export default function Play() {
     const next = nextBank(bank);
     savePartialSession();
     cancelSpeech();
+    if (next.domain === 'about_me') {
+      navigate(next.path);
+      return;
+    }
     setBank(next);
     setSession(startSession({ bank: next }));
     navigate(next.path);

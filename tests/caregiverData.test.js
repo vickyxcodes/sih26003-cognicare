@@ -644,7 +644,7 @@ test('the published security rules are untouched by this step', () => {
   const rules = readFileSync(join(ROOT, 'firestore.rules'), 'utf8');
   // Exactly the model step 10 published: authenticated create only, never
   // update or delete, and no unauthenticated access of any kind.
-  assert.equal((rules.match(/allow create/g) || []).length, 2);
+  assert.equal((rules.match(/allow create/g) || []).length, 3);
   assert.equal((rules.match(/allow update, delete: if false/g) || []).length, 3);
   assert.doesNotMatch(rules, /if true/);
   for (const match of rules.match(/allow create[^;]*/g) || []) {
@@ -657,11 +657,13 @@ test('the published security rules are untouched by this step', () => {
   }
 });
 
-test('the pairing screen asks for nothing but a code', () => {
+test('the pairing screen requires caregiver credentials plus a patient pairing code', () => {
   const page = readFileSync(join(ROOT, 'src', 'pages', 'CaregiverPairing.jsx'), 'utf8');
   const inputs = page.match(/<input[\s\S]*?\/>/g) || [];
-  assert.equal(inputs.length, 1, 'one field, and it is the code');
-  assert.doesNotMatch(page, /type="password"|type="email"|autoComplete="username"/);
+  assert.equal(inputs.length, 3, 'email, password and pairing code are required');
+  assert.match(page, /type="password"/);
+  assert.match(page, /type="email"/);
+  assert.match(page, /currentCaregiver|signInCaregiver|createCaregiverAccount/);
   assert.doesNotMatch(page, /\b(name|address|diagnosis|medication|doctor)\b\s*:/i);
   assert.match(page, /Back to patient home/, 'there is always a way back to the patient side');
 });

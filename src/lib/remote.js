@@ -14,6 +14,7 @@
  * asset, so an installed app that has synced once can still start offline.
  */
 import { isFirebaseConfigured } from '../config/env.js';
+import { isPairingCode } from './privacy.js';
 
 let loading = null;
 
@@ -42,6 +43,16 @@ async function connect() {
   if (!fb) throw new Error('Firebase is not configured');
   return { db: fb.db, firestore: sdk.firestore };
 }
+
+async function connectCaregiver() {
+  const sdk = await loadSdk();
+  const fb = sdk.getFirebase();
+  const user = fb?.auth.currentUser;
+  if (!user || user.isAnonymous) throw new Error('caregiver sign-in is required');
+  return { db: fb.db, firestore: sdk.firestore, user };
+}
+
+const linkId = (uid, pairingCode) => `${uid}_${pairingCode}`;
 
 export function createFirestoreRemote() {
   return {
@@ -109,6 +120,22 @@ export function createFirestoreRemote() {
       );
       const rows = snap.docs.map((entry) => ({ docId: entry.id, ...entry.data() }));
       return { rows, fromCache: Boolean(snap.metadata && snap.metadata.fromCache) };
+    },
+
+    /** Claim a pairing code for the signed-in caregiver. This is create-only. */
+    async linkPairingCode(pairingCode) {
+      if (!isPairingCode(pairingCode)) throw new Error('a valid pairing code is required');
+      const { db, firestore, user } = await connectCaregiver();
+      const ref = firestore.doc(db, 'caregiverLinks', linkId(user.uid, pairingCode));
+      try {
+        await firestore.setDoc(ref, { ownerUid: user.uid, pairingCode, createdAt: Date.now() });
+      } catch (error) {
+        // The rules intentionally reject updates. A read after that rejection
+        // distinguishes an already-owned link from a link owned elsewhere.
+        const existing = await firestore.getDoc(ref);
+        if (existing.exists() && existing.data().ownerUid === user.uid) return;
+        throw error;
+      }
     },
   };
 }

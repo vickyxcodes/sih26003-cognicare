@@ -184,6 +184,17 @@
     @apply text-ink-soft/70;
   }
 
+  .profile-screen { @apply flex min-h-screen items-center justify-center; }
+  .profile-card { @apply w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10; }
+  .profile-progress { @apply mt-3 h-3 overflow-hidden rounded-full bg-primary/10; }
+  .profile-progress span { @apply block h-full rounded-full bg-primary transition-all duration-200; }
+  .profile-input { @apply mt-5 min-h-tap w-full rounded-xl2 border-2 border-primary/30 bg-white px-5 text-2xl text-ink outline-none; }
+  .profile-input:focus { @apply border-primary ring-4 ring-primary/15; }
+
+  .role-screen { @apply flex min-h-screen items-center justify-center px-5 py-8; }
+  .role-card { @apply w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10; }
+  .role-choice { @apply flex min-h-[132px] flex-col items-center justify-center text-center; }
+
   .play-header {
     @apply flex-wrap;
   }

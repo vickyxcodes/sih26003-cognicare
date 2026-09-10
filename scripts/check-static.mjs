@@ -40,7 +40,12 @@ const ROUTES = new Set([
   '/play/words',
   '/play/numbers',
   '/play/patterns',
+  '/play/about-me',
+  '/patient',
+  '/patient/onboarding',
+  '/patient/profile',
   '/caregiver',
+  '/caregiver/patient',
   '/caregiver/dashboard',
 ]);
 
