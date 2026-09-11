@@ -85,6 +85,7 @@ const COPY = {
       currentStats: 'Current game stats',
       progressAndDifficulty: 'progress and difficulty',
       choicesAre: 'The choices are',
+      personalized: 'Personalized for you',
     },
     feedback: {
       correct: "Yes, that's right!",
@@ -204,6 +205,7 @@ const COPY = {
       progress: 'অগ্ৰগতি', accuracy: 'শুদ্ধতাৰ হাৰ', streak: 'একেৰাহে শুদ্ধ', right: '{count} টা শুদ্ধ',
       toReset: 'আকৌ আৰম্ভ কৰিবলৈ {count}', currentStats: 'বৰ্তমান খেলৰ তথ্য', progressAndDifficulty: 'অগ্ৰগতি আৰু কঠিনতাৰ স্তৰ',
       choicesAre: 'বাছনিবোৰ হ’ল',
+      personalized: 'আপোনাৰ বাবে সজোৱা',
     },
     feedback: { correct: 'হয়, এইটো শুদ্ধ!', tricky: 'এইটো অলপ কঠিন আছিল। ভাল চেষ্টা।' },
     done: { wellDone: 'বৰ ভাল!' }, reminder: { aria: 'সোঁৱৰণী', done: 'সম্পূৰ্ণ' },
@@ -392,7 +394,16 @@ export function localizeQuestion(bank, question, language) {
       prompt = 'আপুনি এতিয়াই কোনটো শব্দ দেখিছিল?';
     } else if (domain === 'number_sequence') {
       studyPrompt = `এই সংখ্যাবোৰ মনত ৰাখক: ${listWordsLocalized(question.studyCards.map((card) => digitWord(Number(card.text), language)), language)}।`;
-      prompt = question.tier === 1 ? 'আপুনি এতিয়াই কোনটো সংখ্যা দেখিছিল?' : question.tier === 2 ? 'কোনটো সংখ্যা শেষত আহিছিল?' : 'কোনটো সংখ্যা প্ৰথমে আহিছিল?';
+      // Authored rounds encode the recall in the tier; an AI-generated round may
+      // carry its own recallMode, so ask exactly what the round asks.
+      const mode = question.recallMode || (question.tier === 1 ? 'saw' : question.tier === 2 ? 'last' : 'first');
+      prompt = mode === 'saw'
+        ? 'আপুনি এতিয়াই কোনটো সংখ্যা দেখিছিল?'
+        : mode === 'last'
+          ? 'কোনটো সংখ্যা শেষত আহিছিল?'
+          : mode === 'second'
+            ? 'কোনটো সংখ্যা দ্বিতীয়ত আহিছিল?'
+            : 'কোনটো সংখ্যা প্ৰথমে আহিছিল?';
     } else if (domain === 'pattern_matching') {
       const labels = question.studyCards.map((card) => shapeText(card.shape, language));
       studyPrompt = `এই আৰ্হিটো মনত ৰাখক: ${listWordsLocalized(labels, language)}।`;

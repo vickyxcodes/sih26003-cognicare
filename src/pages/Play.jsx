@@ -6,7 +6,8 @@ import Picture from '../components/Picture.jsx';
 import CardRow from '../components/CardRow.jsx';
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, RetryIcon } from '../components/icons.jsx';
 import { BANKS, FIRST_BANK, nextBank, optionWords } from '../data/banks.js';
-import { recordAnswer, recordSession } from '../lib/db.js';
+import { recordAnswer, recordSession, getStore } from '../lib/db.js';
+import { supportsProfiles } from '../ai/challengeProfiles.js';
 import { cancelSpeech, speak } from '../lib/voice.js';
 import { useLanguage } from '../components/LanguageContext.jsx';
 import {
@@ -82,6 +83,8 @@ export default function Play({ bankOverride = null }) {
   const partialSessionAt = useRef(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  /** The optional AI personalizer for this game (null for the games we don't personalize). */
+  const personalizerRef = useRef(null);
   const { language, t: translate } = useLanguage();
   /**
    * A reminder can cover this screen at any moment (the overlay lives in the
@@ -98,11 +101,17 @@ export default function Play({ bankOverride = null }) {
       return () => clearTimeout(timer);
     }
     if (session.phase === PHASE.FEEDBACK) {
-      const timer = setTimeout(() => setSession((s) => continueSession(s, { bank })), FEEDBACK_MS);
+      const timer = setTimeout(
+        () => setSession((s) => continueSession(s, { bank, nextQuestion: personalizerRef.current?.nextQuestion })),
+        FEEDBACK_MS,
+      );
       return () => clearTimeout(timer);
     }
     if (session.phase === PHASE.TIER) {
-      const timer = setTimeout(() => setSession((s) => continueSession(s, { bank })), TIER_MS);
+      const timer = setTimeout(
+        () => setSession((s) => continueSession(s, { bank, nextQuestion: personalizerRef.current?.nextQuestion })),
+        TIER_MS,
+      );
       return () => clearTimeout(timer);
     }
     return undefined;
@@ -156,6 +165,54 @@ export default function Play({ bankOverride = null }) {
     savePartialSession();
     cancelSpeech();
   }, []);
+
+  /**
+   * The optional on-device AI personalizer, wired per game.
+   *
+   * It is created only for the domains it can actually shape, and only in a
+   * browser; the dynamic import is what pulls TensorFlow in, so the picture,
+   * routine and about-me games never load it. Everything is best-effort: if the
+   * import, model or init fails, `personalizerRef` stays null and the engine keeps
+   * playing the authored, deterministic rounds - the patient sees a normal game.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !supportsProfiles(bank.domain)) {
+      personalizerRef.current = null;
+      return undefined;
+    }
+    let controller = null;
+    let live = true;
+    import('../ai/personalizer.js')
+      .then(({ createPersonalizer }) => {
+        if (!live) return;
+        controller = createPersonalizer({ domain: bank.domain, store: getStore() });
+        personalizerRef.current = controller;
+        // A tiny developer/caregiver diagnostic; harmless if never called.
+        window.cognicareAI = () => (controller ? controller.debug() : null);
+        controller?.init().catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      personalizerRef.current = null;
+      controller?.dispose();
+    };
+  }, [bank]);
+
+  /**
+   * After each answer, fold the running tally into the personalizer so the next
+   * round tracks this sitting. Synchronous and cheap, and it runs before the
+   * feedback timer fires the next `continueSession`, so the recommendation the
+   * engine reads through `nextQuestion` is already up to date.
+   */
+  useEffect(() => {
+    personalizerRef.current?.update({
+      asked: session.asked,
+      correct: session.correct,
+      streakRight: session.streakRight,
+      streakWrong: session.streakWrong,
+    });
+  }, [session.asked, session.correct, session.streakRight, session.streakWrong]);
 
   /**
    * The session-level row the caregiver chart plots, written once when the
@@ -220,6 +277,16 @@ export default function Play({ bankOverride = null }) {
     : session.streakWrong
       ? translate('play.toReset', { count: session.streakWrong })
       : '—';
+  /**
+   * The personalization badge, shown only when this round was actually built by
+   * the AI layer to be harder or easier than the standard round (matched by id, so
+   * it can only describe the round on screen). The one-line reason is grounded in
+   * the real profile and recent play; it is authored in English, so the badge
+   * stands alone in Assamese rather than mixing languages.
+   */
+  const aiRound = question && personalizerRef.current ? personalizerRef.current.describeQuestion(question.id) : null;
+  const showAiBadge = Boolean(aiRound && aiRound.note);
+  const aiExplain = showAiBadge && language === 'en' ? aiRound.note : '';
 
   return (
     <main className="screen flex min-h-screen flex-col gap-8">
@@ -264,6 +331,12 @@ export default function Play({ bankOverride = null }) {
 
       {phase === PHASE.STUDY && (
         <section className="flex flex-1 flex-col items-center justify-center gap-6">
+          {showAiBadge && (
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-lg font-semibold text-primary">{translate('play.personalized')}</p>
+              {aiExplain && <p className="max-w-xl text-center text-lg text-ink-soft">{aiExplain}</p>}
+            </div>
+          )}
           <p className="text-center text-3xl font-semibold">{displayQuestion.studyPrompt}</p>
           <div className="card animate-pop-in flex flex-col items-center gap-3 px-10 py-8">
             {displayQuestion.studyItem ? (
@@ -280,6 +353,9 @@ export default function Play({ bankOverride = null }) {
 
       {phase === PHASE.ASK && (
         <section className="flex flex-1 flex-col justify-center gap-8">
+          {showAiBadge && (
+            <p className="text-center text-lg font-semibold text-primary">{translate('play.personalized')}</p>
+          )}
           <h1 className="text-center text-4xl font-bold leading-snug">{displayQuestion.prompt}</h1>
           <div className="grid gap-6 sm:grid-cols-2">
             {displayQuestion.options.map((opt) => (

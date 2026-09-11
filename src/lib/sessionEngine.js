@@ -90,6 +90,27 @@ function pickQuestion(bank, tier, usedIds, rand, lastPair = null) {
 }
 
 /**
+ * The optional personalised round.
+ *
+ * `nextQuestion` is an injected hook (the AI layer, in the app; absent in tests
+ * and for the domains that are not personalised). When present it is offered the
+ * current domain, tier and the ids already used, and may return a ready-built
+ * question or nothing. Anything falsy, malformed, or a throw means "no opinion",
+ * and the engine falls back to the authored pool below - so the deterministic
+ * game is exactly what runs whenever the hook is absent or declines. The AI never
+ * changes the tier; it only fills a round *within* the tier the engine chose.
+ */
+function offerQuestion(nextQuestion, { domain, tier, usedIds }) {
+  if (typeof nextQuestion !== 'function') return null;
+  try {
+    const q = nextQuestion({ domain, tier, usedIds });
+    return q && Array.isArray(q.options) && q.options.length ? q : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Which screen a question opens on, decided by the question itself.
  *
  * `memory_recall` shows a picture to memorise and then hides it; `word_recall`,
@@ -111,8 +132,10 @@ export function startSession({
   now = Date.now(),
   rand = Math.random,
   maxQuestions = MAX_QUESTIONS,
+  nextQuestion = null,
 }) {
-  const question = pickQuestion(bank, tier, [], rand);
+  const question = offerQuestion(nextQuestion, { domain: bank.domain, tier, usedIds: [] })
+    || pickQuestion(bank, tier, [], rand);
   return {
     domain: bank.domain,
     bankName: bank.name,
@@ -202,7 +225,7 @@ export function tierDecision(state) {
  * The bank is passed in rather than stored in state so that state stays plain,
  * serializable data - which is what lets tests snapshot it and React hold it.
  */
-export function continueSession(state, { bank, now = Date.now(), rand = Math.random }) {
+export function continueSession(state, { bank, now = Date.now(), rand = Math.random, nextQuestion = null }) {
   if (state.phase !== PHASE.FEEDBACK && state.phase !== PHASE.TIER) return state;
 
   if (state.phase === PHASE.FEEDBACK) {
@@ -230,7 +253,8 @@ export function continueSession(state, { bank, now = Date.now(), rand = Math.ran
     }
   }
 
-  const question = pickQuestion(bank, state.tier, state.usedIds, rand, pairKey(state.question));
+  const question = offerQuestion(nextQuestion, { domain: state.domain, tier: state.tier, usedIds: state.usedIds })
+    || pickQuestion(bank, state.tier, state.usedIds, rand, pairKey(state.question));
   if (!question) return { ...state, phase: PHASE.DONE, endReason: 'no-questions', endedAt: now };
   return {
     ...state,
